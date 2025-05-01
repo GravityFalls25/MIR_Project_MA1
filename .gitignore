@@ -172,3 +172,15 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+BGR/
+GLCM/
+HOG/
+LBP/
+HSV/
+ORB/
+SIFT/
+MIR_DATASETS_B/
+**/*.txt
+
+
