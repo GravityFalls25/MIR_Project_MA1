@@ -182,5 +182,6 @@ ORB/
 SIFT/
 MIR_DATASETS_B/
 **/*.txt
+*.npy
 
 
