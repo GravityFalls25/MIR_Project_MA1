@@ -189,7 +189,8 @@ class Ui_MainWindow(object):
     def Ouvrir(self, MainWindow): 
         self.list_images = [] 
         #Sélectionner le dossier Wang 
-        self.Dossier_images = "C:\\Thib\\unif local\\Master 1\\Multimedia information retrieval\\Projet\\MIR_DATASETS_B\\MIR_DATASETS_B"
+        chemin_courant = os.getcwd()
+        self.Dossier_images = chemin_courant + "\\MIR_DATASETS_B\\MIR_DATASETS_B"
         #self.Dossier_images = QtWidgets.QFileDialog.getExistingDirectory(None,'Select directory', "C://", QtWidgets.QFileDialog.ShowDirsOnly)+"/" 
         
         for classe in os.listdir(self.Dossier_images):
