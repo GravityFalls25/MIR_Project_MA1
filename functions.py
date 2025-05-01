@@ -52,7 +52,7 @@ def generateHistogramme_HSV(Dossier_images, progressBar):
                 feature = np.concatenate((histH, histS, histV), axis=None)
 
                 num_image, _ = path.split(".")
-                np.savetxt(path_save + "/" + str(num_image) + ".txt", feature)
+                np.save(path_save + "/" + str(num_image) + ".txt", feature)
                 progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1
 
@@ -93,7 +93,7 @@ def generateHistogramme_Color(Dossier_images, progressBar):
                 feature = np.concatenate((histB, histG, histR), axis=None)
 
                 num_image, _ = path.split(".")
-                np.savetxt(path_save + "/" + str(num_image) + ".txt", feature)
+                np.save(path_save + "/" + str(num_image) + ".txt", feature)
                 progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1
 
@@ -132,7 +132,7 @@ def generateSIFT(Dossier_images, progressBar):
                     continue
 
                 num_image, _ = path.split(".")
-                np.savetxt(path_save + "/" + str(num_image) + ".txt", des)
+                np.save(path_save + "/" + str(num_image) + ".txt", des)
                 progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1
 
@@ -179,7 +179,7 @@ def generateORB(Dossier_images, progressBar):
                     list_dont.append(Dossier_images + "/" + classe +"/"+ sub_class + "/" + path)
                     continue
                 num_image, _ = path.split(".")
-                np.savetxt(path_save + "/" +str(num_image)+".txt" ,descrip1 )
+                np.save(path_save + "/" +str(num_image)+".txt" ,descrip1 )
                 progressBar.setValue(int(100*((i+1)/n_fichier)))
                 i+=1
     print("liste des images qui n'ont pas fonctionnées")
@@ -216,7 +216,7 @@ def extractReqFeatures(fileName,algo_choice):
             # finding key points and descriptors of both images using detectAndCompute() function
             key_point1,vect_features = orb.detectAndCompute(img,None)
 			
-        np.savetxt("Methode_"+str(algo_choice)+"_requete.txt" ,vect_features)
+        np.save("Methode_"+str(algo_choice)+"_requete" ,vect_features)
         print("saved")
         #print("vect_features", vect_features)
         return vect_features
@@ -263,7 +263,7 @@ def generateGLCM(Dossier_images, progressBar):
                 feature = np.concatenate(glcmProperties, axis=None)
                 
                 num_image, _ = path.split(".") 
-                np.savetxt(os.path.join(path_save, str(num_image) + ".txt"), feature) 
+                np.save(os.path.join(path_save, str(num_image) + ".txt"), feature) 
                 progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1 
 
@@ -320,7 +320,7 @@ def generateLBP(Dossier_images, progressBar):
                         histograms = np.concatenate((histograms, subHist), axis=None) 
 
                 num_image, _ = path.split(".") 
-                np.savetxt(os.path.join(path_save, str(num_image) + ".txt"), histograms) 
+                np.save(os.path.join(path_save, str(num_image) + ".txt"), histograms) 
                 progressBar.setValue(int(100 * ((i + 1) / n_fichier))) 
                 i += 1 
 
@@ -364,7 +364,7 @@ def generateHOG(Dossier_images, progressBar):
                                  visualize=True)
 
                 num_image, _ = path.split(".") 
-                np.savetxt(os.path.join(path_save, str(num_image) + ".txt"), feature) 
+                np.save(os.path.join(path_save, str(num_image) + ".txt"), feature) 
                 progressBar.setValue(int(100 * ((i + 1) / n_fichier))) 
                 i += 1 
 

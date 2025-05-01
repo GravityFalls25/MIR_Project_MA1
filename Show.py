@@ -25,7 +25,6 @@ from distances import *
 
 import os
 
-filenames= "C:\\Thib\\unif local\\Master 1\\Multimedia information retrieval\\Projet\\MIR_DATASETS_B\\MIR_DATASETS_B" 
 folder_model="" 
 
 class Ui_MainWindow(object):
@@ -386,13 +385,13 @@ class Ui_MainWindow(object):
                     continue
 
                 for fichier in os.listdir(path_subclass):
-                    if not fichier.endswith(".txt"):
+                    if not fichier.endswith(".npy"):
                         continue
 
                     chemin_fichier_feature = os.path.join(path_subclass, fichier)
-                    feature = np.loadtxt(chemin_fichier_feature)
+                    feature = np.load(chemin_fichier_feature)
 
-                    # Récupère le nom de l’image originale (remplace .txt par .jpg)
+                    # Récupère le nom de l’image originale (remplace .npy par .jpg)
                     nom_image = fichier.split('.')[0] + ".jpg"
                     chemin_image = os.path.join(filenames, classe, sub_class, nom_image)
 
@@ -401,7 +400,7 @@ class Ui_MainWindow(object):
                     pas += 1
                     self.progressBar.setValue(int(100 * ((pas + 1) /n_fichiers)))
                     print("chemin_image", chemin_image)
-                    print("feature", feature)
+                    #print("feature", feature)
                     
 
         if not self.checkBox_SIFT.isChecked() and not self.checkBox_HistC.isChecked() and not self.checkBox_HSV.isChecked() and not self.checkBox_ORB.isChecked() : 
@@ -421,7 +420,7 @@ class Ui_MainWindow(object):
             distanceName=self.comboBox.currentText() 
             #Générer les voisins 
             voisins=getkVoisins(self.features1, req, self.sortie, distanceName ) 
-            print(voisins[0][0])
+            #print(voisins[0][0])
             print(os.path.basename(voisins[0][0]))
             self.path_image_plus_proches = [] 
             self.nom_image_plus_proches = [] 
@@ -514,7 +513,11 @@ class Ui_MainWindow(object):
 
 if __name__ == "__main__":
     import sys
+    global filenames
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    
+    filenames = os.getcwd() + "\\MIR_DATASETS_B\\MIR_DATASETS_B" 
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
