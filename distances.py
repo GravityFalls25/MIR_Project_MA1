@@ -83,6 +83,8 @@ def distance_f(l1,l2,distanceName):
         distance = bruteForceMatching(l1, l2)
     elif distanceName=="Flann":
         distance= flann(l1, l2)
+    else:
+        distance = bruteForceMatching(l1, l2)
     return distance
 
 def getkVoisins(lfeatures, req, k,distanceName) : 
