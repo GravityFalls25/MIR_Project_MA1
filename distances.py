@@ -6,7 +6,8 @@ import numpy as np
 from skimage import feature
 from matplotlib import pyplot as plt
 from skimage.feature import hog,local_binary_pattern
-from skimage.feature.texture import graycomatrix, graycoprops
+# from skimage.feature.texture import graycomatrix, graycoprops
+
 import operator
 import collections 
 from collections import Counter

@@ -427,13 +427,19 @@ class Ui_MainWindow(object):
             for k in range(self.sortie): 
                 self.path_image_plus_proches.append(voisins[k][0]) 
                 self.nom_image_plus_proches.append(os.path.basename(voisins[k][0])) 
+                print(f"nom = {os.path.basename(voisins[k][0])}")
+                print(f"path = {voisins[k][0]}")
             #Nombre de colonnes pour l'affichage 
             col=3 
             k=0 
             for i in range(math.ceil(self.sortie/col)): 
                 for j in range(col): 
+                    print(f"path_image_plus_proches[{k}]",self.path_image_plus_proches[k])
                     img = cv2.imread(self.path_image_plus_proches[k],1) #load image 
                     #Remise de l'image en RGB pour l'afficher correctement 
+                    if img is None:
+                        print("Erreur lors du chargement de l'image :", self.path_image_plus_proches[k])
+                        break
                     b,g,r = cv2.split(img) 
                     img = cv2.merge([r,g,b]) 
                     # get b,g,r 
@@ -517,7 +523,7 @@ if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     
-    filenames = os.getcwd() + "\\MIR_DATASETS_B\\MIR_DATASETS_B" 
+    filenames = os.getcwd() + "/MIR_DATASETS_B/MIR_DATASETS_B" 
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()

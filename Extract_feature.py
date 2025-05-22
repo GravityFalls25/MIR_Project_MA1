@@ -190,7 +190,7 @@ class Ui_MainWindow(object):
         self.list_images = [] 
         #Sélectionner le dossier Wang 
         chemin_courant = os.getcwd()
-        self.Dossier_images = chemin_courant + "\\MIR_DATASETS_B\\MIR_DATASETS_B"
+        self.Dossier_images = chemin_courant + "/MIR_DATASETS_B/MIR_DATASETS_B"
         #self.Dossier_images = QtWidgets.QFileDialog.getExistingDirectory(None,'Select directory', "C://", QtWidgets.QFileDialog.ShowDirsOnly)+"/" 
         
         for classe in os.listdir(self.Dossier_images):

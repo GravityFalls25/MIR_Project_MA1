@@ -9,7 +9,8 @@ from skimage import exposure
 from skimage import io, color, img_as_ubyte
 from matplotlib import pyplot as plt
 from skimage.feature import hog, local_binary_pattern
-from skimage.feature.texture import graycomatrix, graycoprops
+from skimage.feature.texture import greycomatrix, greycoprops
+
 
 def showDialog():
     msgBox = QMessageBox()
@@ -255,10 +256,10 @@ def generateGLCM(Dossier_images, progressBar):
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
                 gray = img_as_ubyte(gray) 
 
-                glcmMatrix = graycomatrix(gray, distances=distances, angles=angles, normed=True) 
+                glcmMatrix = greycomatrix(gray, distances=distances, angles=angles, normed=True) 
                 glcmProperties = []
                 for prop in ['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation', 'ASM']:
-                    glcmProperties.append(graycoprops(glcmMatrix, prop).ravel())
+                    glcmProperties.append(greycoprops(glcmMatrix, prop).ravel())
                 
                 feature = np.concatenate(glcmProperties, axis=None)
                 
