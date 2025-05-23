@@ -292,6 +292,10 @@ class Ui_MainWindow(object):
     
     def recherche(self):
         
+        self.coubreRP.clear()  # removes the pixmap and any text
+        self.coubreRP.setText("Courbe R/P à afficher ici")  # or whatever default text you want
+
+
         race = True
 
         for i in reversed(range(self.scrollAreaWidgetContents.layout().count())): #supprime les ancienes images
@@ -355,6 +359,10 @@ class Ui_MainWindow(object):
             rappel_precion = []
             rp = []
             position1 = os.path.splitext(os.path.basename(image_path))[0]
+            
+            query_dir = os.path.dirname(image_path) #récupère le nom du dossier de l'image requête
+            topmax = len([f for f in os.listdir(query_dir) if os.path.isfile(os.path.join(query_dir, f)) and f.lower().endswith(('.jpg'))])
+            
 
             if race:
                 position1 = position1.split("_")[3]
@@ -386,27 +394,30 @@ class Ui_MainWindow(object):
 
             vec_prec = []
             vec_rap = []
+            ver_rap_top = []
 
             for i in range(top):
                 if rappel_precion[i] == "pertinent":
                     val += 1
                 precision = val/(i+1)
-                rappel = val/top #bizare comment calculé
+                rappel = val/topmax #bizare comment calculé
                 vec_prec.append(precision)
                 vec_rap.append(rappel)
+                ver_rap_top.append(val/top)
             
             plt.figure(figsize=(4, 4))
             
             # print("vec_prec", vec_prec)
             # print("vec_rap", vec_rap)
 
-            plt.plot(vec_rap, vec_prec, color='red', label='Courbe Rappel/Précision')
+            plt.plot(vec_rap, vec_prec, color='red', label='Courbe Rappel/Précision TOPMAX')
+            plt.plot(ver_rap_top, vec_prec, color='blue', label='Courbe Rappel/Précision TOP')
             plt.title("Courbe Rappel/Précision")
 
             plt.xlabel("Rappel")
             plt.ylabel("Precision")
-            plt.xlim(-0.1, 1.1)
             plt.ylim(-0.1, 1.1)
+            plt.xlim(-0.1, 1.1)
             plt.grid()
 
             plt.legend()
