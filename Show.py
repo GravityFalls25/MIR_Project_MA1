@@ -21,7 +21,7 @@ from skimage import exposure
 from matplotlib import pyplot as plt 
 from functions import compter_fichiers, extractReqFeatures, showDialog, generateSIFT, generateHistogramme_HSV, generateHistogramme_Color, generateORB 
 from distances import * 
-
+import glob
 
 import os
 
@@ -30,7 +30,7 @@ folder_model=""
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1203, 544)
+        MainWindow.resize(1200, 550)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
@@ -117,7 +117,7 @@ class Ui_MainWindow(object):
         self.checkBox_Moments.setFont(font)
         self.checkBox_Moments.setObjectName("checkBox_Moments")
         self.label_2 = QtWidgets.QLabel(self.centralwidget)
-        self.label_2.setGeometry(QtCore.QRect(10, 140, 361, 31))
+        self.label_2.setGeometry(QtCore.QRect(10, 150, 361, 31))
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(12)
@@ -128,7 +128,7 @@ class Ui_MainWindow(object):
         self.label_2.setAlignment(QtCore.Qt.AlignCenter)
         self.label_2.setObjectName("label_2")
         self.label_requete = QtWidgets.QLabel(self.centralwidget)
-        self.label_requete.setGeometry(QtCore.QRect(10, 180, 361, 251))
+        self.label_requete.setGeometry(QtCore.QRect(10, 190, 361, 251))
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(12)
@@ -142,7 +142,7 @@ class Ui_MainWindow(object):
         self.label_requete.setObjectName("label_requete")
         self.progressBar = QtWidgets.QProgressBar(self.centralwidget)
         self.progressBar.setGeometry(QtCore.QRect(10, 440, 931, 41))
-        self.progressBar.setProperty("value", 24)
+        self.progressBar.setProperty("value", 0)
         self.progressBar.setObjectName("progressBar")
         self.label_4 = QtWidgets.QLabel(self.centralwidget)
         self.label_4.setGeometry(QtCore.QRect(380, 10, 551, 31))
@@ -166,14 +166,32 @@ class Ui_MainWindow(object):
         self.label_5.setFrameShape(QtWidgets.QFrame.Panel)
         self.label_5.setAlignment(QtCore.Qt.AlignCenter)
         self.label_5.setObjectName("label_5")
-        self.gridLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.gridLayoutWidget.setGeometry(QtCore.QRect(380, 180, 551, 251))
+        # self.gridLayoutWidget = QtWidgets.QWidget(self.centralwidget)
+        # self.gridLayoutWidget.setGeometry(QtCore.QRect(380, 180, 551, 251))
+        # self.gridLayoutWidget.setObjectName("gridLayoutWidget")
+        # self.gridLayout = QtWidgets.QGridLayout(self.gridLayoutWidget)
+        # self.gridLayout.setContentsMargins(0, 0, 0, 0)
+        # self.gridLayout.setObjectName("gridLayout")
+        # Scroll Area
+        self.scrollArea = QtWidgets.QScrollArea(self.centralwidget)
+        self.scrollArea.setGeometry(QtCore.QRect(380, 190, 551, 251))
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setObjectName("scrollArea")
+
+        # Contenu du scroll (l'ancien widget)
+        self.gridLayoutWidget = QtWidgets.QWidget()
         self.gridLayoutWidget.setObjectName("gridLayoutWidget")
+
+        # Layout à l'intérieur du widget
         self.gridLayout = QtWidgets.QGridLayout(self.gridLayoutWidget)
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
         self.gridLayout.setObjectName("gridLayout")
+
+        # Associer le widget au scroll
+        self.scrollArea.setWidget(self.gridLayoutWidget)
+
         self.label_courbe = QtWidgets.QLabel(self.centralwidget)
-        self.label_courbe.setGeometry(QtCore.QRect(940, 180, 251, 251))
+        self.label_courbe.setGeometry(QtCore.QRect(940, 190, 251, 251))
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(12)
@@ -209,7 +227,7 @@ class Ui_MainWindow(object):
         self.label_7.setAlignment(QtCore.Qt.AlignCenter)
         self.label_7.setObjectName("label_7")
         self.label_8 = QtWidgets.QLabel(self.centralwidget)
-        self.label_8.setGeometry(QtCore.QRect(380, 140, 551, 31))
+        self.label_8.setGeometry(QtCore.QRect(380, 150, 551, 31))
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(12)
@@ -220,7 +238,7 @@ class Ui_MainWindow(object):
         self.label_8.setAlignment(QtCore.Qt.AlignCenter)
         self.label_8.setObjectName("label_8")
         self.label_9 = QtWidgets.QLabel(self.centralwidget)
-        self.label_9.setGeometry(QtCore.QRect(940, 140, 251, 31))
+        self.label_9.setGeometry(QtCore.QRect(940, 150, 251, 31))
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(12)
@@ -279,6 +297,36 @@ class Ui_MainWindow(object):
         self.label_3.setObjectName("label_3")
         self.charger_desc = QtWidgets.QPushButton(self.centralwidget)
         self.charger_desc.setGeometry(QtCore.QRect(380, 70, 201, 41))
+        # Label pour le nombre d'images
+        self.label_nb_images = QtWidgets.QLabel(self.centralwidget)
+        self.label_nb_images.setGeometry(QtCore.QRect(380, 120, 251, 22))
+        font = QtGui.QFont()
+        font.setFamily("Calibri")
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.label_nb_images.setFont(font)
+        self.label_nb_images.setAlignment(QtCore.Qt.AlignLeft)
+        self.label_nb_images.setObjectName("label_nb_images")
+
+        # Champ pour sélectionner le nombre d'images à afficher
+        self.spinBox_nb_images = QtWidgets.QSpinBox(self.centralwidget)
+        self.spinBox_nb_images.setGeometry(QtCore.QRect(640, 118, 71, 22))
+        self.spinBox_nb_images.setMinimum(1)
+        self.spinBox_nb_images.setMaximum(1000)
+        self.spinBox_nb_images.setValue(10)  # valeur par défaut
+        self.spinBox_nb_images.setObjectName("spinBox_nb_images")
+
+        self.checkBox_race = QtWidgets.QCheckBox(self.centralwidget)
+        self.checkBox_race.setGeometry(QtCore.QRect(750, 118, 150, 21))
+        font = QtGui.QFont()
+        font.setFamily("Calibri")
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.checkBox_race.setFont(font)
+        self.checkBox_race.setObjectName("checkBox_race")
+
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(11)
@@ -328,6 +376,12 @@ class Ui_MainWindow(object):
         self.charger_desc.clicked.connect(self.loadFeatures)
         self.chercher.clicked.connect(self.Recherche)
         self.calcul_RP.clicked.connect(self.rappel_precision)
+        self.label_nb_images.setText(_translate("MainWindow", "Nombre d’images à afficher :"))
+        self.spinBox_nb_images.setValue(10)  # valeur par défaut
+        self.spinBox_nb_images.setMinimum(1)  # valeur minimale
+        self.checkBox_race.setText(_translate("MainWindow", "Race"))
+
+
 
     def Ouvrir(self, MainWindow): 
         global fileName 
@@ -407,6 +461,7 @@ class Ui_MainWindow(object):
             print("Merci de sélectionner au moins un descripteur dans le menu") 
             showDialog()
     def Recherche(self, MainWindow): 
+        
         #Remise à 0 de la grille des voisins 
         for i in reversed(range(self.gridLayout.count())): 
             self.gridLayout.itemAt(i).widget().setParent(None) 
@@ -415,7 +470,9 @@ class Ui_MainWindow(object):
             ##Generer les features de l'images requete 
             req = extractReqFeatures(fileName, self.algo_choice) 
             ##Definition du nombre de voisins 
-            self.sortie = 9 
+            nb_images = self.spinBox_nb_images.value()
+
+            self.sortie =  nb_images
             #Aller chercher dans la liste de l'interface la distance choisie 
             distanceName=self.comboBox.currentText() 
             #Générer les voisins 
@@ -460,62 +517,87 @@ class Ui_MainWindow(object):
 
 
     def rappel_precision(self): 
-        rappel_precision=[] 
-        rappels=[] 
-        precisions=[] 
-        filename_req=os.path.basename(fileName) 
-        num_image, _ = filename_req.split(".") 
-        classe_image_requete = int(num_image)/100 
-        val =0 
-        for j in range(self.sortie): 
-            classe_image_proche=(int(self.nom_image_plus_proches[j].split('.')[0]))/100 
-            classe_image_requete = int(classe_image_requete) 
-            classe_image_proche = int(classe_image_proche) 
-            if classe_image_requete==classe_image_proche: 
-                rappel_precision.append(1) #Bonne classe (pertinant) 
-                val += 1 
-            else: 
-                rappel_precision.append(0) #Mauvaise classe (non pertinant) 
-        for i in range(self.sortie): 
-            j=i 
+        folder_model = './MIR_DATASETS_B/MIR_DATASETS_B' 
+
+        self.base_image = glob.glob(os.path.join(folder_model, "**", "*.jpg"), recursive=True)
+        race = self.checkBox_race.isChecked()
+        rp = []
+        
+
+
+        if race :
+            classe_1 =os.path.basename(fileName).split("_")[3]
+        else :
+            classe_1 =os.path.basename(fileName).split("_")[2]
+        for j in range(self.sortie):
+            if race:
+                classe_2 = os.path.basename(self.path_image_plus_proches[j]).split("_")[3]
+            else:
+                classe_2 = os.path.basename(self.path_image_plus_proches[j]).split("_")[2]
             
-            val = 0 
-            while j >= 0: 
-                if rappel_precision[j]: 
-                    val += 1 
-                j -= 1 
+            if classe_1 == classe_2:
+                rp.append("pertinent")
+            else:
+                rp.append("non pertinent")
+
+        val = 0  # Nombre d'images pertinentes accumulées
+        precisions = []
+        rappels = []
+        total_pertinents = 0
+        for path in self.base_image:
+            basename = os.path.basename(path)
+            parts = basename.split("_")
+            index = 3 if race else 2
+            if len(parts) > index:
+                valeur = parts[index]
+                if valeur == classe_1:
+                    total_pertinents += 1
+        total_pertinents = min(total_pertinents, self.sortie)
+
+        for i in range(self.sortie):
+            if rp[i] == "pertinent":
+                val += 1
             precision = val / (i + 1)
-            rappel = val / self.sortie
-            rappels.append(rappel) 
-            precisions.append(precision) 
+            rappel = val / total_pertinents if total_pertinents != 0 else 0
+            precisions.append(precision)
+            rappels.append(rappel)
+
         #Création de la courbe R/P 
-        plt.plot(rappels,precisions) 
-        plt.xlabel("Recall") 
-        plt.ylabel("Precision") 
-        plt.title("R/P"+str(self.sortie)+" voisins de l'image n°"+num_image) 
+        plt.plot(rappels,precisions,linewidth=2) 
+        plt.xlabel("Recall",fontsize=12) 
+        plt.ylabel("Precision",fontsize=12) 
+        plt.title("R/P"+str(self.sortie)+" voisins de l'image " +   os.path.basename(fileName),fontsize=14) 
         #Enregistrement de la courbe RP 
-        save_folder=os.path.join(".",num_image) 
+        if race:
+            folder_name = os.path.basename(fileName).split("_")[3]
+        else:
+            folder_name = os.path.basename(fileName).split("_")[2]
+        folder_name = "Recall_Precision" + "/" + folder_name 
+        save_folder = os.path.join(".", folder_name)
+        
         if not os.path.exists(save_folder): 
             os.makedirs(save_folder) 
-        save_name=os.path.join(save_folder,num_image+'.png') 
-        plt.savefig(save_name,format='png',dpi=600) 
+        save_name=os.path.join(save_folder,os.path.basename(fileName)+'.png') 
+        plt.savefig(save_name,format='png',dpi=800) 
         plt.close() 
-        #Affichage de la courbe R/P 
-        img = cv2.imread(save_name,1) #load image in color 
-        #Remise de l'image en RGB pour l'afficher correctement 
-        b,g,r = cv2.split(img) 
-        # get b,g,r 
-        img = cv2.merge([r,g,b]) 
-        # switch it to rgb 
-        #convert image to QImage 
-        height, width, channel = img.shape 
-        bytesPerLine = 3 * width 
-        qImg = QtGui.QImage(img.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888) 
-        pixmap=QtGui.QPixmap.fromImage(qImg) 
+        #Affichage de la courbe RP
+        qImg = QtGui.QImage(save_name)
+        pixmap = QtGui.QPixmap.fromImage(qImg)
+
         width = self.label_requete.frameGeometry().width() 
         height = self.label_requete.frameGeometry().height() 
-        self.label_courbe.setAlignment(QtCore.Qt.AlignCenter) 
-        self.label_courbe.setPixmap(pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio,QtCore.Qt.SmoothTransformation))
+        self.label_courbe.setPixmap(
+            pixmap.scaled(
+                self.label_courbe.width(),
+                self.label_courbe.height(),
+                QtCore.Qt.KeepAspectRatio,
+                QtCore.Qt.SmoothTransformation
+            )
+        )
+
+
+        # self.label_courbe.setAlignment(QtCore.Qt.AlignCenter) 
+        # self.label_courbe.setPixmap(pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio,QtCore.Qt.SmoothTransformation))
 
 if __name__ == "__main__":
     import sys
