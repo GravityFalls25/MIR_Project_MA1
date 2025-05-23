@@ -181,6 +181,7 @@ HSV/
 ORB/
 SIFT/
 MIR_DATASETS_B/
+Recall_Precision/
 **/*.txt
 *.npy
 
