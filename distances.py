@@ -66,7 +66,7 @@ def bruteForceMatching(a, b):
 
 def distance_f(l1,l2,distanceName):
     if distanceName=="Euclidienne":
-        distance =distance = np.linalg.norm(np.array(l1) - np.array(l2))
+        distance = np.linalg.norm(np.array(l1) - np.array(l2))
     elif distanceName in ["Correlation","Chi carre","Intersection","Bhattacharyya"]:
         l1 = np.float32(l1)
         l2 = np.float32(l2)
