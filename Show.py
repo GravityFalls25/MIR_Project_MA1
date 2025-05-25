@@ -19,7 +19,7 @@ from skimage.io import imread
 from skimage.feature import hog 
 from skimage import exposure 
 from matplotlib import pyplot as plt 
-from functions import compter_fichiers, extractReqFeatures, showDialog, generateSIFT, generateHistogramme_HSV, generateHistogramme_Color, generateORB 
+from functions import compter_fichiers, extractReqFeatures, showDialog, generateSIFT, generateHistogramme_HSV, generateHistogramme_Color, generateORB,fusion_features_dict
 from distances import * 
 import glob
 
@@ -398,85 +398,127 @@ class Ui_MainWindow(object):
     def loadFeatures(self, MainWindow): 
         
         folder_model="" 
-        if self.checkBox_HistC.isChecked(): 
-            folder_model = './BGR' 
-            self.algo_choice=1 
-        if self.checkBox_HSV.isChecked(): 
-            folder_model = './HSV' 
-            self.algo_choice=2 
-        if self.checkBox_SIFT.isChecked(): 
-            folder_model = './SIFT'
-            self.algo_choice=3 
-        if self.checkBox_ORB.isChecked(): 
-            folder_model = './ORB'
-            self.algo_choice=4 
+        self.algo_choice = []
+
+        self.algo_choice = []
+        folders_model = []
+
+        if self.checkBox_HistC.isChecked():
+            self.algo_choice.append("BGR")
+            folders_model.append('./BGR')
+        if self.checkBox_HSV.isChecked():
+            self.algo_choice.append("HSV")
+            folders_model.append('./HSV')
+        if self.checkBox_SIFT.isChecked():
+            self.algo_choice.append("SIFT")
+            folders_model.append('./SIFT')
+        if self.checkBox_ORB.isChecked():
+            self.algo_choice.append("ORB")
+            folders_model.append('./ORB')
+        # Vérification de compatibilité des descripteurs
+        hist_descriptors = {"BGR", "HSV"}
+        keypoint_descriptors = {"SIFT", "ORB"}
+
+        if any(a in self.algo_choice for a in hist_descriptors) and any(a in self.algo_choice for a in keypoint_descriptors):
+            print("Erreur : descripteurs incompatibles sélectionnés.")
+            showDialog()
+            return
+        if len(self.algo_choice) > 1 and ("SIFT" in self.algo_choice or "ORB" in self.algo_choice):
+            print("Erreur : SIFT et ORB ne peuvent pas être combinés avec d'autres descripteurs.")
+            showDialog()
+            return 
+
         for i in reversed(range(self.gridLayout.count())):
             self.gridLayout.itemAt(i).widget().setParent(None)
         if filenames: 
-            if self.algo_choice==3 or self.algo_choice==4: 
-                self.comboBox.clear() 
-                self.comboBox.addItems(["Brute force","Flann"]) 
-            else : 
-                self.comboBox.clear() 
-                self.comboBox.addItems(["Euclidienne","Correlation","Chi carre","Intersection","Bhattacharyya"]) 
+            if "SIFT" in self.algo_choice or "ORB" in self.algo_choice:
+                self.comboBox.clear()
+                self.comboBox.addItems(["Brute force", "Flann"])
+            else:
+                self.comboBox.clear()
+                self.comboBox.addItems(["Euclidienne", "Correlation", "Chi carre", "Intersection", "Bhattacharyya"])
+
         if len(filenames)<1: 
             print("Merci de charger une image avec le bouton Ouvrir") 
             ##Charger les features de la base de données. 
-        n_fichiers = compter_fichiers(folder_model)
-        self.features1 = [] 
-        pas = 0 
-        print("chargement de descripteurs en cours ...") 
-        print(os.getcwd())
+        
+        n_fichiers = compter_fichiers(folders_model[0])
+        print("Nombre de fichiers : ", n_fichiers)
+        
+        features_temp = {}  # dictionnaire chemin_image -> [vecteurs de tous les descripteurs]
+        
+        print("Chargement descripteurs...")
 
-        for classe in os.listdir(folder_model):
-            path_classe = os.path.join(folder_model, classe)
-            if not os.path.isdir(path_classe):
-                continue
-
-            for sub_class in os.listdir(path_classe):
-                path_subclass = os.path.join(path_classe, sub_class)
-                if not os.path.isdir(path_subclass):
+        # On boucle sur chaque dossier de descripteurs
+        for model_path in folders_model:
+            pas = 0
+            print("Chargement descripteurs dans le dossier : ", model_path)
+            for classe in os.listdir(model_path):
+                path_classe = os.path.join(model_path, classe)
+                if not os.path.isdir(path_classe):
                     continue
 
-                for fichier in os.listdir(path_subclass):
-                    if not fichier.endswith(".npy"):
+                for sub_class in os.listdir(path_classe):
+                    path_subclass = os.path.join(path_classe, sub_class)
+                    if not os.path.isdir(path_subclass):
                         continue
 
-                    chemin_fichier_feature = os.path.join(path_subclass, fichier)
-                    feature = np.load(chemin_fichier_feature)
+                    for fichier in os.listdir(path_subclass):
+                        if not fichier.endswith(".npy"):
+                            continue
 
-                    # Récupère le nom de l’image originale (remplace .npy par .jpg)
-                    nom_image = fichier.split('.')[0] + ".jpg"
-                    chemin_image = os.path.join(filenames, classe, sub_class, nom_image)
+                        chemin_fichier_feature = os.path.join(path_subclass, fichier)
+                        feature = np.load(chemin_fichier_feature)
 
-                    self.features1.append((chemin_image, feature))
+                        nom_image = fichier.split('.')[0] + ".jpg"
+                        chemin_image = os.path.join(filenames, classe, sub_class, nom_image)
 
-                    pas += 1
-                    self.progressBar.setValue(int(100 * ((pas + 1) /n_fichiers)))
-                    print("chemin_image", chemin_image)
-                    #print("feature", feature)
+                        if chemin_image not in features_temp:
+                            features_temp[chemin_image] = []
+                        features_temp[chemin_image].append(feature)
+
+                        pas += 1
+                        self.progressBar.setValue(int(100 * (pas / n_fichiers)))
+            self.progressBar.setValue(0)
+        for chemin_image, vecteurs in features_temp.items():
+            print("chemin_image:", chemin_image)
+            for i, v in enumerate(vecteurs):
+                print(f"  vecteur {i} shape: {v.shape}, type: {type(v)}")
+            break
+
+        print("Fin chargement descripteurs")
+        if len(self.algo_choice) == 1:
+            self.features1 = [(chemin, vecteurs[0]) for chemin, vecteurs in features_temp.items()]
+        else:
+            print("Fusion des descripteurs...")
+            self.features1 = fusion_features_dict(features_temp, mode='concat')  # ou 'moyenne'
+        print("Nombre de descripteurs chargés :", len(self.features1))
+        print("Exemple de descripteur :", self.features1[0][1].shape if len(self.features1) > 0 else "Aucun descripteur chargé")
+        print("Fin fusion des descripteurs")
                     
 
         if not self.checkBox_SIFT.isChecked() and not self.checkBox_HistC.isChecked() and not self.checkBox_HSV.isChecked() and not self.checkBox_ORB.isChecked() : 
             print("Merci de sélectionner au moins un descripteur dans le menu") 
             showDialog()
+
+
     def Recherche(self, MainWindow): 
         
-        #Remise à 0 de la grille des voisins 
+        
+       # Remise à 0 de la grille des voisins 
         for i in reversed(range(self.gridLayout.count())): 
             self.gridLayout.itemAt(i).widget().setParent(None) 
-            voisins="" 
-        if self.algo_choice !=0: 
-            ##Generer les features de l'images requete 
-            req = extractReqFeatures(fileName, self.algo_choice) 
-            ##Definition du nombre de voisins 
-            nb_images = self.spinBox_nb_images.value()
+        voisins = "" 
 
+        if self.algo_choice != 0: 
+            # Préparation des features de la requête avec même logique que pour la base
+            req = extractReqFeatures(fileName, self.algo_choice) 
+            
+            nb_images = self.spinBox_nb_images.value()
             self.sortie =  nb_images
-            #Aller chercher dans la liste de l'interface la distance choisie 
-            distanceName=self.comboBox.currentText() 
-            #Générer les voisins 
-            voisins=getkVoisins(self.features1, req, self.sortie, distanceName ) 
+
+            distanceName = self.comboBox.currentText()
+            voisins = getkVoisins(self.features1, req, self.sortie, distanceName)
             #print(voisins[0][0])
             print(os.path.basename(voisins[0][0]))
             self.path_image_plus_proches = [] 
@@ -484,8 +526,8 @@ class Ui_MainWindow(object):
             for k in range(self.sortie): 
                 self.path_image_plus_proches.append(voisins[k][0]) 
                 self.nom_image_plus_proches.append(os.path.basename(voisins[k][0])) 
-                print(f"nom = {os.path.basename(voisins[k][0])}")
-                print(f"path = {voisins[k][0]}")
+                # print(f"nom = {os.path.basename(voisins[k][0])}")
+                # print(f"path = {voisins[k][0]}")
             #Nombre de colonnes pour l'affichage 
             col=3 
             k=0 

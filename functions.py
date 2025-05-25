@@ -188,40 +188,103 @@ def generateORB(Dossier_images, progressBar):
     print(len(list_dont))
     print("indexation ORB terminée !!!!")
 	
-def extractReqFeatures(fileName,algo_choice):  
-    print(algo_choice)
-    if fileName : 
-        img = cv2.imread(fileName)
-        resized_img = resize(img, (128*4, 64*4))
-            
-        if algo_choice==1: #Couleurs
-            histB = cv2.calcHist([img],[0],None,[256],[0,256])
-            histG = cv2.calcHist([img],[1],None,[256],[0,256])
-            histR = cv2.calcHist([img],[2],None,[256],[0,256])
-            vect_features = np.concatenate((histB, np.concatenate((histG,histR),axis=None)),axis=None)
-        
-        elif algo_choice==2: # Histo HSV
-            hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
-            histH = cv2.calcHist([hsv],[0],None,[256],[0,256])
-            histS = cv2.calcHist([hsv],[1],None,[256],[0,256])
-            histV = cv2.calcHist([hsv],[2],None,[256],[0,256])
-            vect_features = np.concatenate((histH, np.concatenate((histS,histV),axis=None)),axis=None)
+def extractReqFeatures(fileName, algo_choice, mode='concat'):
+    print("Méthodes sélectionnées :", algo_choice)
+    if not fileName:
+        return None
 
-        elif algo_choice==3: #SIFT
-            sift = cv2.SIFT_create() #cv2.xfeatures2d.SIFT_create() pour py < 3.4 
-            # Find the key point
-            kps , vect_features = sift.detectAndCompute(img,None)
-    
-        elif algo_choice==4: #ORB
+    img = cv2.imread(fileName)
+    if img is None:
+        print("Erreur : image non chargée")
+        return None
+
+    img = cv2.resize(img, (128*4, 64*4))
+    features_dict = {}
+    features_dict[fileName] = []
+    print("algo_choice", algo_choice)
+    for algo in algo_choice:
+        if algo == "BGR":
+            histB = cv2.calcHist([img], [0], None, [256], [0, 256])
+            histG = cv2.calcHist([img], [1], None, [256], [0, 256])
+            histR = cv2.calcHist([img], [2], None, [256], [0, 256])
+            vect_features = np.concatenate((histB, histG, histR), axis=0)
+            features_dict[fileName].append(vect_features)
+
+        elif algo == "HSV":
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            histH = cv2.calcHist([hsv], [0], None, [256], [0, 256])
+            histS = cv2.calcHist([hsv], [1], None, [256], [0, 256])
+            histV = cv2.calcHist([hsv], [2], None, [256], [0, 256])
+            vect_features = np.concatenate((histH, histS, histV), axis=0)
+            features_dict[fileName].append(vect_features)
+
+        elif algo == "SIFT":
+            sift = cv2.SIFT_create()
+            _, descriptors = sift.detectAndCompute(img, None)
+            if descriptors is None:
+                descriptors = np.zeros((1, 128))
+            vect_features = descriptors
+            features_dict[fileName].append(vect_features)
+            print("Taille du vecteur SIFT :", vect_features.shape)
+
+
+
+ 
+        elif algo == "ORB":
             orb = cv2.ORB_create()
-            # finding key points and descriptors of both images using detectAndCompute() function
-            key_point1,vect_features = orb.detectAndCompute(img,None)
-			
-        np.save("Methode_"+str(algo_choice)+"_requete" ,vect_features)
-        print("saved")
-        #print("vect_features", vect_features)
-        return vect_features
+            _, descriptors = orb.detectAndCompute(img, None)
+            if descriptors is None:
+                descriptors = np.zeros((1, 32))
+            vect_features = descriptors
+            features_dict[fileName].append(vect_features)
+            print("Taille du vecteur ORB :", vect_features.shape)
+        else:
+            print(f"Descripteur inconnu : {algo}")
+            continue
+
+    # print("Vecteurs de caractéristiques extraits pour chaque méthode :", features_dict)
+    print("Taille des vecteurs de caractéristiques :", [v.shape for v in features_dict[fileName]])
+        
+        
+    # Fusion via la fonction fournie
+    if len(algo_choice) == 1:
+        # Si une seule méthode est choisie, on ne fusionne pas
+        fused_features = [(fileName, features_dict[fileName][0])]
+    else:
+        fused_features = fusion_features_dict(features_dict, mode=mode)
     
+    print("Vecteurs de caractéristiques fusionnés :", fused_features)
+    print("Taille du vecteur fusionné :", fused_features[0][1].shape)
+
+    # Optionnel : sauvegarde
+    np.save(f"Requete_fusion_{'_'.join(algo_choice)}_{mode}.npy", fused_features[0][1])
+    print("Descripteur fusionné sauvegardé.")
+
+    return fused_features[0][1]  # on retourne juste le vecteur final
+
+
+    
+def fusion_features_dict(features_dict, mode='concat'):
+    fused_features = []
+    for chemin_image, vecteurs in features_dict.items():
+        if mode == 'concat':
+            liste = []
+            for i,v in enumerate(vecteurs):
+                if i == 0:
+                    liste = v.copy()
+                else:
+                    liste = np.hstack((liste, v))
+
+            fused_features.append((chemin_image, liste))
+            # vecteur_fusion = np.concatenate(vecteurs)
+            # print(vecteur_fusion.shape)
+        elif mode == 'moyenne':
+            vecteur_fusion = np.mean(np.array(vecteurs), axis=0)
+        else:
+            raise ValueError(f"Mode de fusion inconnu: {mode}")
+
+        # fused_features.append((chemin_image, vecteur_fusion))
+    return fused_features
 
 
 def generateGLCM(Dossier_images, progressBar): 
