@@ -10,9 +10,10 @@ from skimage import io, color, img_as_ubyte
 from matplotlib import pyplot as plt
 from skimage.feature import hog, local_binary_pattern
 from skimage.feature.texture import greycomatrix, greycoprops
+import torchvision.transforms as transforms
 import torch
 import timm
-
+from PIL import Image
 
 def showDialog():
     msgBox = QMessageBox()
@@ -255,7 +256,6 @@ def extractReqFeatures(fileName, algo_choice, mode='concat'):
         print("Erreur : image non chargée")
         return None
 
-    img = cv2.resize(img, (128*4, 64*4))
     features_dict = {}
     features_dict[fileName] = []
     print("algo_choice", algo_choice)
@@ -330,8 +330,7 @@ def extractReqFeatures(fileName, algo_choice, mode='concat'):
     else:
         fused_features = fusion_features_dict(features_dict, mode=mode)
     
-    print("Vecteurs de caractéristiques fusionnés :", fused_features)
-    print("Taille du vecteur fusionné :", fused_features[0][1].shape)
+    print("Taille du vecteur:", fused_features[0][1].shape)
 
     # Optionnel : sauvegarde
     np.save(f"Requete_fusion_{'_'.join(algo_choice)}_{mode}.npy", fused_features[0][1])
