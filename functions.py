@@ -10,6 +10,8 @@ from skimage import io, color, img_as_ubyte
 from matplotlib import pyplot as plt
 from skimage.feature import hog, local_binary_pattern
 from skimage.feature.texture import greycomatrix, greycoprops
+import torch
+import timm
 
 
 def showDialog():
@@ -187,7 +189,62 @@ def generateORB(Dossier_images, progressBar):
     print(list_dont)
     print(len(list_dont))
     print("indexation ORB terminée !!!!")
-	
+
+def generateViT(Dossier_images,progressBar):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    feature_extractor = timm.create_model('vit_base_patch16_224', pretrained=True)
+    feature_extractor.reset_classifier(0)
+    feature_extractor.eval()
+    feature_extractor.to(device)
+
+    if not os.path.isdir("ViT"):
+        os.mkdir("ViT")
+
+    list_dont = []
+    n_fichier = compter_fichiers(Dossier_images)
+    i = 0
+
+    for classe in os.listdir(Dossier_images):
+        path_save_classe = os.path.join("ViT", classe)
+        if not os.path.isdir(path_save_classe):
+            os.mkdir(path_save_classe)
+
+        for sub_class in os.listdir(os.path.join(Dossier_images, classe)):
+            path_save_sub_class = os.path.join(path_save_classe, sub_class)
+            if not os.path.isdir(path_save_sub_class):
+                os.mkdir(path_save_sub_class)
+
+            for path in os.listdir(os.path.join(Dossier_images, classe, sub_class)):
+                img_path = os.path.join(Dossier_images, classe, sub_class, path)
+                img = cv2.imread(img_path)
+
+                if img is None:
+                    print(f"Image non lisible : {img_path}")
+                    list_dont.append(img_path)
+                    continue
+
+                img_tensor = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img_tensor = cv2.resize(img_tensor, (224, 224))
+                img_tensor = img_tensor.transpose((2, 0, 1))  # Convert to CxHxW
+                img_tensor = torch.tensor(img_tensor, dtype=torch.float32).unsqueeze(0) / 255.0
+                img_tensor = img_tensor.to(device)
+
+                with torch.no_grad():
+                    features = feature_extractor(img_tensor)
+
+                features = features.cpu().numpy().flatten()
+                num_image, _ = os.path.splitext(path)
+                np.save(os.path.join(path_save_sub_class, f"{num_image}.npy"), features)
+
+                progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
+                i += 1
+
+    print("Images sans features ViT:")
+    print(list_dont)
+    print(len(list_dont))
+    print("Indexation ViT terminée !!!!")
+
+
 def extractReqFeatures(fileName, algo_choice, mode='concat'):
     print("Méthodes sélectionnées :", algo_choice)
     if not fileName:
@@ -238,6 +295,26 @@ def extractReqFeatures(fileName, algo_choice, mode='concat'):
             vect_features = descriptors
             features_dict[fileName].append(vect_features)
             print("Taille du vecteur ORB :", vect_features.shape)
+        
+        elif algo == "Vit":
+            # Charge le modèle Vit
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            feature_extractor = timm.create_model('vit_base_patch16_224', pretrained=True)
+            feature_extractor.reset_classifier(0)  # Remove classification head to get pure features
+            feature_extractor.eval()
+            feature_extractor.to(device)
+            # Prétraitement de l'image
+            img_tensor = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img_tensor = cv2.resize(img_tensor, (224, 224))
+            img_tensor = img_tensor.transpose((2, 0, 1))  # Convert to CxHxW
+            img_tensor = torch.tensor(img_tensor, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
+            img_tensor = img_tensor.to(device) / 255.0  # Normalisation
+            # Extraction des caractéristiques
+            with torch.no_grad():
+                features = feature_extractor(img_tensor)
+            features = features.cpu().numpy().flatten()
+            features_dict[fileName].append(features)
+
         else:
             print(f"Descripteur inconnu : {algo}")
             continue

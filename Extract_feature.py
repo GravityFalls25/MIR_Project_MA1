@@ -176,6 +176,11 @@ class Ui_MainWindow(object):
             a = time.time()
             fct.generateLBP(self.Dossier_images, self.progressBar)
             print(f"Descripteur LBP généré en {time.time()-a} secondes")
+        
+        if self.Dossier_images and self.checkBox_VIT.isChecked():
+            a = time.time()
+            fct.generateVIT(self.Dossier_images, self.progressBar)
+            print(f"Descripteur HOG généré en {time.time()-a} secondes")
             
         if not self.checkBox_SIFT.isChecked() and not self.checkBox_HistC.isChecked() and not self.checkBox_HSV.isChecked() and not self.checkBox_ORB.isChecked():
             print("Merci de selectionner un descripteur via le Menu  ...")

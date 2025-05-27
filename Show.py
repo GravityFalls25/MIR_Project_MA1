@@ -107,15 +107,15 @@ class Ui_MainWindow(object):
         font.setWeight(75)
         self.checkBox_HOG.setFont(font)
         self.checkBox_HOG.setObjectName("checkBox_HOG")
-        self.checkBox_Moments = QtWidgets.QCheckBox(self.centralwidget)
-        self.checkBox_Moments.setGeometry(QtCore.QRect(290, 80, 81, 16))
+        self.checkBox_Vit = QtWidgets.QCheckBox(self.centralwidget)
+        self.checkBox_Vit.setGeometry(QtCore.QRect(290, 80, 81, 16))
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(11)
         font.setBold(True)
         font.setWeight(75)
-        self.checkBox_Moments.setFont(font)
-        self.checkBox_Moments.setObjectName("checkBox_Moments")
+        self.checkBox_Vit.setFont(font)
+        self.checkBox_Vit.setObjectName("checkBox_Vit")
         self.label_2 = QtWidgets.QLabel(self.centralwidget)
         self.label_2.setGeometry(QtCore.QRect(10, 150, 361, 31))
         font = QtGui.QFont()
@@ -357,7 +357,7 @@ class Ui_MainWindow(object):
         self.checkBox_GLCM.setText(_translate("MainWindow", "GLCM"))
         self.checkBox_LBP.setText(_translate("MainWindow", "LBP"))
         self.checkBox_HOG.setText(_translate("MainWindow", "HOG"))
-        self.checkBox_Moments.setText(_translate("MainWindow", "Mom."))
+        self.checkBox_Vit.setText(_translate("MainWindow", "Vit"))
         self.label_2.setText(_translate("MainWindow", "Image requête"))
         self.label_4.setText(_translate("MainWindow", "Recherche"))
         self.label_5.setText(_translate("MainWindow", "Rappel/Précision"))
@@ -415,6 +415,9 @@ class Ui_MainWindow(object):
         if self.checkBox_ORB.isChecked():
             self.algo_choice.append("ORB")
             folders_model.append('./ORB')
+        if self.checkBox_Vit.isChecked():
+            self.algo_choice.append("Vit")
+            folders_model.append('./Vit_descriptor')
         # Vérification de compatibilité des descripteurs
         hist_descriptors = {"BGR", "HSV"}
         keypoint_descriptors = {"SIFT", "ORB"}
@@ -497,7 +500,7 @@ class Ui_MainWindow(object):
         print("Fin fusion des descripteurs")
                     
 
-        if not self.checkBox_SIFT.isChecked() and not self.checkBox_HistC.isChecked() and not self.checkBox_HSV.isChecked() and not self.checkBox_ORB.isChecked() : 
+        if not self.checkBox_SIFT.isChecked() and not self.checkBox_HistC.isChecked() and not self.checkBox_HSV.isChecked() and not self.checkBox_ORB.isChecked() and not self.checkBox_GLCM.isChecked() and not self.checkBox_LBP.isChecked() and not self.checkBox_HOG.isChecked() and not self.checkBox_Vit.isChecked() and not self.checkBox_autre.isChecked(): 
             print("Merci de sélectionner au moins un descripteur dans le menu") 
             showDialog()
 
