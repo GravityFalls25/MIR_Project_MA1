@@ -6,6 +6,8 @@
 #
 # WARNING! All changes made in this file will be lost!
 
+from flickr30k import Dataset #pour avoir dataset partie3
+
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sys
@@ -35,6 +37,9 @@ from sentence_transformers import SentenceTransformer
 
 import json
 
+import clip
+import faiss
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -61,6 +66,12 @@ class Ui_MainWindow(object):
         self.topInput.setObjectName("topInput")
         self.topInput.setText("10")  # default value
 
+        #selecteur de partie pour avoir soir la 2 ou la 3
+        self.partSelector = QtWidgets.QComboBox(self.centralwidget)
+        self.partSelector.setGeometry(QtCore.QRect(351 + 30 + 5, 80, 100, 31))  # x = 351+30+5 = 386
+        self.partSelector.setObjectName("partSelector")
+        self.partSelector.addItems(["partie 2", "partie 3"])
+
 
         self.titreLabe = QtWidgets.QLabel(self.centralwidget)
         self.titreLabe.setGeometry(QtCore.QRect(270, 30, 211, 16))
@@ -84,7 +95,11 @@ class Ui_MainWindow(object):
         self.scroll_layout = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.scrollAreaWidgetContents.setLayout(self.scroll_layout)
 
-
+        self.map = QtWidgets.QLabel(self.centralwidget)
+        self.map.setGeometry(QtCore.QRect(70, 550, 461, 30))  # x, y, width, height
+        self.map.setObjectName("map")
+        self.map.setText("")  # Initially empty
+        self.map.setAlignment(QtCore.Qt.AlignCenter)
 
         self.imageCharge = QtWidgets.QLabel(self.centralwidget)
         self.imageCharge.setGeometry(QtCore.QRect(550, 80, 221, 131))
@@ -127,11 +142,31 @@ class Ui_MainWindow(object):
 
         self.selected_image = None
 
+        #chargement partie 3 commence par le dataset
+        builder = Dataset()
+        builder.download_and_prepare() 
+
+        ds = builder.as_dataset()
+        self.dataset = ds['test']
+
+        self.max_char_len = 200 #car si dépasse 77 token modèle plante donc limite à 200 mots pour être tranquille
+
+        self.model_clip, self.preprocess = clip.load("ViT-B/32", device=self.device) #charge le modèle CLIP
+
+        #charge des index par faiss 
+        self.image_index = faiss.read_index("flickr30k_clip_images.index")
+        self.text_index = faiss.read_index("flickr30k_clip_texts.index")
+        self.multimodal_index = faiss.read_index("flickr30k_clip_multimodal.index")
+        self.image_paths = np.load("image_paths.npy", allow_pickle=True)
+        self.captions = np.load("captions.npy", allow_pickle=True)
+
+
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.titreLabe.setText(_translate("MainWindow", "Partie 2 recherche multimodale"))
+        self.titreLabe.setText(_translate("MainWindow", "Recherche multimodale"))
         self.loadImage.setText(_translate("MainWindow", "Charger une image"))
         self.research.setText(_translate("MainWindow", "Rechercher"))
         self.coubreRP.setText(_translate("MainWindow", "Courbre R/P"))
@@ -261,6 +296,38 @@ class Ui_MainWindow(object):
         return (features_dict, feature_text_dict, features_mixed_dict), image_dict, text_dict
 
 
+    def compute_metrics(self, retrieved_indices, relevant_indices, k=None):
+   
+        if k is not None:
+            retrieved_indices = retrieved_indices[:k]
+        relevant_set = set(relevant_indices)
+        retrieved_set = set(retrieved_indices)
+        num_relevant = len(relevant_set)
+        if num_relevant == 0:
+            return 0.0, 0.0, 0.0
+
+
+        precisions = []
+        recalls = []
+        recalls_top_k = []
+
+        
+        hits = 0
+        sum_precisions = 0.0
+        for i, idx in enumerate(retrieved_indices):
+            if idx in relevant_set:
+                hits += 1
+                sum_precisions += hits / (i + 1)
+                precision = hits / (i + 1)
+                recall = hits / num_relevant
+                recall_top_k = hits / k
+                precisions.append(precision)
+                recalls.append(recall)
+                recalls_top_k.append(recall_top_k)
+        average_precision = sum_precisions / num_relevant if num_relevant > 0 else 0.0
+
+        return precisions, recalls, recalls_top_k, average_precision
+
 
     #fonction pour afficher un résultat avec le nom au dessus et le texte en dessous
     def add_result_image_and_text(self, scroll_area_widget, image_path, top_text, bottom_text):
@@ -291,18 +358,135 @@ class Ui_MainWindow(object):
         scroll_area_widget.layout().addWidget(result_widget)
     
     def recherche(self):
-        
-        self.coubreRP.clear()  # removes the pixmap and any text
-        self.coubreRP.setText("Courbe R/P à afficher ici")  # or whatever default text you want
-
-
-        race = True
+        #reset les résultats précédents
+        self.coubreRP.clear()  # reset courbeRP
+        self.coubreRP.setText("Courbe R/P à afficher ici")  
 
         for i in reversed(range(self.scrollAreaWidgetContents.layout().count())): #supprime les ancienes images
             widget_to_remove = self.scrollAreaWidgetContents.layout().itemAt(i).widget()
             widget_to_remove.setParent(None)
+    
+        if self.partSelector.currentText() == "partie 2":
+            self.recherche_partie2()
+        elif self.partSelector.currentText() == "partie 3":
+            self.recherche_partie3()
+        else:
+            print("Partie non reconnue, veuillez sélectionner partie 2 ou partie 3.")
 
+    
+    def recherche_partie3(self): #fonction recherche pour la partie 3
+        input_text = self.textInput.toPlainText()
+        top_text = self.topInput.toPlainText()
+        image_path = self.selected_image
+        print("image_path", image_path)
+
+        if image_path == "":
+            image_path = None
+
+        assert top_text != "", "Veuillez entrer un nombre d'image souhaite"
+
+        top = int(top_text) #le récupère
+        assert top > 0, "Veuillez entrer un nombre d'image souhaite positif"
+
+        #calcule les embeddings de l'image si elle est sélectionnée
+        selected_request = -1
+        image_embedding = None
+        text_embedding = None
+
+        if image_path is not None:
+            selected_request += 1
+            query_image = self.preprocess(Image.open(image_path)).unsqueeze(0).to(self.device)
+            with torch.no_grad():
+                image_embedding = self.model_clip.encode_image(query_image).cpu().numpy()
+    
+
+        if input_text is not None:
+            selected_request += 2
+            text_token = clip.tokenize([input_text[:self.max_char_len]]).to(self.device)  # Tokenize the input text
+            with torch.no_grad():
+                text_embedding = self.model_clip.encode_text(text_token).cpu().numpy()
+
+        #cree embedding final + rechecheche
+        if image_embedding is not None and text_embedding is None:
+            D, I = self.image_index.search(image_embedding.astype('float32'), k=top)  # Recherche dans l'index d'images
+        elif image_embedding is None and text_embedding is not None:
+            D, I = self.text_index.search(text_embedding.astype('float32'), k=top)
+        else:
+            embedding = np.hstack([image_embedding/np.linalg.norm(image_embedding), text_embedding/np.linalg.norm(text_embedding)]) #concatène les deux embeddings
+            print("shape text_embedding", text_embedding.shape)
+            print("shape image_embedding", image_embedding.shape)
+            print("shape embedding", embedding.shape)
+            D, I = self.multimodal_index.search(embedding.astype('float32'), k=top)  # Recherche dans l'index multimodal
+
+        top_image_paths = [self.image_paths[i] for i in I[0]]
+
+        # nom_images_proches = [self.image_dict[v[0]] for v in voisins if v[0] in self.image_dict]
+        for j in range(min(top, len(top_image_paths))):
+            image_path_tmp = top_image_paths[j]
+            indice = np.where(self.image_paths == image_path_tmp)[0]  # Trouve l'indice de l'image dans self.image_paths
+            print("indice", indice)
+            nom = top_image_paths[j].split("/")[-1].split(".")[0]  #retire extension + path avant
+            # print(self.text_dict)
+            text = self.captions[indice[0]] if indice.size > 0 else "Texte non trouvé"
+            text = "\n ".join([str(t) for t in text.tolist()]) #pour avoir un seul string
+            print("text", text)
+            
+            self.add_result_image_and_text(self.scrollAreaWidgetContents, image_path_tmp, nom, text)
         
+        if selected_request == 1: #si que fait requête texte, calcule les métriques car sinon ne fait pas de sens
+            query_words = set(input_text.lower().split())
+            relevant_indices = []
+
+            
+            for idx, img_captions in enumerate(self.captions):  # now a list of 5 strings
+                for cap in img_captions:
+                    cap_words = set(cap.lower().split())
+                    if query_words.issubset(cap_words):
+                        relevant_indices.append(idx)
+                        break  # only need one matching caption to count the image as relevant
+        
+            retrieved_indices = [self.image_paths.tolist().index(p) for p in top_image_paths]
+            # print("retrieved_indices", retrieved_indices)
+            # print("relevant_indices", relevant_indices)
+            precision, recall, recall_top_k, average_precision = self.compute_metrics(retrieved_indices, relevant_indices, k=top)
+            #plot la courbe
+            plt.figure(figsize=(4, 4))
+            
+
+            plt.plot(recall, precision, color='red', label='Courbe Rappel/Précision TOPMAX')
+            plt.plot(recall_top_k, precision, color='blue', label='Courbe Rappel/Précision TOP K')
+            plt.title("Courbe Rappel/Précision")
+
+            plt.xlabel("Rappel")
+            plt.ylabel("Precision")
+            plt.ylim(-0.1, 1.1)
+            plt.xlim(-0.1, 1.1)
+            plt.grid()
+
+            plt.legend(loc='best')
+            buf = BytesIO()
+            plt.savefig(buf, format='png')
+            plt.close()  
+
+            # Load buffer as QPixmap
+            buf.seek(0)
+            qimg = QtGui.QImage.fromData(buf.getvalue())
+            pixmap = QtGui.QPixmap.fromImage(qimg)
+
+            # Set pixmap to your QLabel
+            self.coubreRP.setPixmap(pixmap)
+            self.coubreRP.setScaledContents(True)
+
+            self.map.setText(f"MAP = {average_precision:.2f}")
+            
+        
+            
+
+
+    def recherche_partie2(self): #fonction recherche pour la partie 2
+
+        race = True
+
         #les inputs
         input_text = self.textInput.toPlainText()
         top_text = self.topInput.toPlainText()
@@ -312,8 +496,6 @@ class Ui_MainWindow(object):
         if image_path == "":
             image_path = None
 
-
-        
         assert top_text != "", "Veuillez entrer un nombre d'image souhaite"
 
         top = int(top_text) #le récupère
@@ -411,7 +593,7 @@ class Ui_MainWindow(object):
             # print("vec_rap", vec_rap)
 
             plt.plot(vec_rap, vec_prec, color='red', label='Courbe Rappel/Précision TOPMAX')
-            plt.plot(ver_rap_top, vec_prec, color='blue', label='Courbe Rappel/Précision TOP')
+            plt.plot(ver_rap_top, vec_prec, color='blue', label='Courbe Rappel/Précision TOP K')
             plt.title("Courbe Rappel/Précision")
 
             plt.xlabel("Rappel")

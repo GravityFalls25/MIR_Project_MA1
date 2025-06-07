@@ -3,6 +3,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+flickr30k-images/
+
+flickr30k-images.zip
+flickr30k_clip_images.index
+flickr30k_clip_multimodal.index
+flickr30k_clip_texts.index
+flickr_annotation_30k.csv
+
+
 # C extensions
 *.so
 
