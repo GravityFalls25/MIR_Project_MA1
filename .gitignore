@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 flickr30k-images/
+flickr30k-image/
 
 flickr30k-images.zip
 flickr30k_clip_images.index

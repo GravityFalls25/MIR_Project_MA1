@@ -13,6 +13,7 @@ from skimage.feature.texture import greycomatrix, greycoprops
 import torchvision.transforms as transforms
 import torch
 import timm
+from tqdm import tqdm
 from PIL import Image
 
 def showDialog():
@@ -36,13 +37,13 @@ def generateHistogramme_HSV(Dossier_images, progressBar):
         if not os.path.isdir(path_save):
             os.mkdir(path_save)
         print(classe)
-        for sub_class in os.listdir(os.path.join(Dossier_images, classe)):
+        for sub_class in tqdm(os.listdir(os.path.join(Dossier_images, classe))):
             path_save = "HSV/" + classe + "/" + sub_class
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
-            print(sub_class)
+            # print(sub_class)
             for path in os.listdir(os.path.join(Dossier_images, classe, sub_class)):
-                print(path)
+                # print(path)
                 full_path = os.path.join(Dossier_images, classe, sub_class, path)
                 img = cv2.imread(full_path)
                 if img is None:
@@ -57,7 +58,8 @@ def generateHistogramme_HSV(Dossier_images, progressBar):
 
                 num_image, _ = path.split(".")
                 np.save(path_save + "/" + str(num_image) + ".txt", feature)
-                progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
+                if progressBar is not None:
+                    progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1
 
     print("liste des images qui n'ont pas fonctionnées")
@@ -78,13 +80,13 @@ def generateHistogramme_Color(Dossier_images, progressBar):
         if not os.path.isdir(path_save):
             os.mkdir(path_save)
         print(classe)
-        for sub_class in os.listdir(os.path.join(Dossier_images, classe)):
+        for sub_class in tqdm(os.listdir(os.path.join(Dossier_images, classe))):
             path_save = "BGR/" + classe + "/" + sub_class
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
-            print(sub_class)
+            # print(sub_class)
             for path in os.listdir(os.path.join(Dossier_images, classe, sub_class)):
-                print(path)
+                # print(path)
                 full_path = os.path.join(Dossier_images, classe, sub_class, path)
                 img = cv2.imread(full_path)
                 if img is None:
@@ -98,7 +100,8 @@ def generateHistogramme_Color(Dossier_images, progressBar):
 
                 num_image, _ = path.split(".")
                 np.save(path_save + "/" + str(num_image) + ".txt", feature)
-                progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
+                if progressBar is not None:
+                    progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1
 
     print("liste des images qui n'ont pas fonctionnées")
@@ -119,13 +122,13 @@ def generateSIFT(Dossier_images, progressBar):
         if not os.path.isdir(path_save):
             os.mkdir(path_save)
         print(classe)
-        for sub_class in os.listdir(Dossier_images + "/" + classe):
+        for sub_class in tqdm(os.listdir(Dossier_images + "/" + classe)):
             path_save = "SIFT/" + classe + "/" + sub_class
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
-            print(sub_class)
-            for path in os.listdir(Dossier_images + "/" + classe + "/" + sub_class):
-                print(path)
+            # print(sub_class)
+            for path in (os.listdir(Dossier_images + "/" + classe + "/" + sub_class)):
+                # print(path)
                 img = cv2.imread(Dossier_images + "/" + classe + "/" + sub_class + "/" + path)
                 #img = cv2.resize(img, (0, 0), fx=0.2, fy=0.2) 
                 sift = cv2.SIFT_create()
@@ -137,7 +140,8 @@ def generateSIFT(Dossier_images, progressBar):
 
                 num_image, _ = path.split(".")
                 np.save(path_save + "/" + str(num_image) + ".txt", des)
-                progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
+                if progressBar is not None:
+                    progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1
 
     print("liste des images qui n'ont pas fonctionnées")
@@ -166,16 +170,16 @@ def generateORB(Dossier_images, progressBar):
         # classe = Dossier_images  + "/" + classe
         print(classe)
 
-        for sub_class in os.listdir(Dossier_images +"/"+  classe):
+        for sub_class in tqdm(os.listdir(Dossier_images +"/"+  classe)):
             path_save = "ORB/" + classe + "/" + sub_class 
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
             # sub_class = classe + "/" + sub_class
-            print(sub_class)
-            for path in os.listdir(Dossier_images +"/" + classe +"/"+ sub_class):
+            # print(sub_class)
+            for path in (os.listdir(Dossier_images +"/" + classe +"/"+ sub_class)):
                 img = cv2.imread(Dossier_images +"/" + classe +"/"+ sub_class + "/" + path )
 
-                print(path)
+                # print(path)
                 orb = cv2.ORB_create()
                 key_point1,descrip1 = orb.detectAndCompute(img,None)
                 if descrip1 is None:
@@ -184,22 +188,25 @@ def generateORB(Dossier_images, progressBar):
                     continue
                 num_image, _ = path.split(".")
                 np.save(path_save + "/" +str(num_image)+".txt" ,descrip1 )
-                progressBar.setValue(int(100*((i+1)/n_fichier)))
+                if progressBar is not None:
+                    progressBar.setValue(int(100*((i+1)/n_fichier)))
                 i+=1
     print("liste des images qui n'ont pas fonctionnées")
     print(list_dont)
     print(len(list_dont))
     print("indexation ORB terminée !!!!")
 
-def generateViT(Dossier_images,progressBar):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def generateViT(Dossier_images,progressBar, device=None):
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Utilisation de l'appareil :", device)
     feature_extractor = timm.create_model('vit_base_patch16_224', pretrained=True)
     feature_extractor.reset_classifier(0)
     feature_extractor.eval()
     feature_extractor.to(device)
 
-    if not os.path.isdir("ViT"):
-        os.mkdir("ViT")
+    if not os.path.isdir("Vit_descriptor"):
+        os.mkdir("Vit_descriptor")
 
     list_dont = []
     n_fichier = compter_fichiers(Dossier_images)
@@ -210,7 +217,7 @@ def generateViT(Dossier_images,progressBar):
         if not os.path.isdir(path_save_classe):
             os.mkdir(path_save_classe)
 
-        for sub_class in os.listdir(os.path.join(Dossier_images, classe)):
+        for sub_class in tqdm(os.listdir(os.path.join(Dossier_images, classe))):
             path_save_sub_class = os.path.join(path_save_classe, sub_class)
             if not os.path.isdir(path_save_sub_class):
                 os.mkdir(path_save_sub_class)
@@ -237,7 +244,8 @@ def generateViT(Dossier_images,progressBar):
                 num_image, _ = os.path.splitext(path)
                 np.save(os.path.join(path_save_sub_class, f"{num_image}.npy"), features)
 
-                progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
+                if progressBar is not None:
+                    progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1
 
     print("Images sans features ViT:")
@@ -378,14 +386,14 @@ def generateGLCM(Dossier_images, progressBar):
         if not os.path.isdir(path_save):
             os.mkdir(path_save)
 
-        for sub_class in os.listdir(os.path.join(Dossier_images, classe)):
-            print(sub_class)
+        for sub_class in tqdm(os.listdir(os.path.join(Dossier_images, classe))):
+            # print(sub_class)
             path_save = "GLCM/" + classe + "/" + sub_class
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
 
             for path in os.listdir(os.path.join(Dossier_images, classe, sub_class)):
-                print(path)
+                # print(path)
                 full_path = os.path.join(Dossier_images, classe, sub_class, path)
                 image = cv2.imread(full_path)
                 if image is None:
@@ -404,7 +412,8 @@ def generateGLCM(Dossier_images, progressBar):
                 
                 num_image, _ = path.split(".") 
                 np.save(os.path.join(path_save, str(num_image) + ".txt"), feature) 
-                progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
+                if progressBar is not None:
+                    progressBar.setValue(int(100 * ((i + 1) / n_fichier)))
                 i += 1 
 
     print("liste des images qui n'ont pas fonctionnées")
@@ -431,14 +440,14 @@ def generateLBP(Dossier_images, progressBar):
         if not os.path.isdir(path_save):
             os.mkdir(path_save)
 
-        for sub_class in os.listdir(os.path.join(Dossier_images, classe)):
-            print(sub_class)
+        for sub_class in tqdm(os.listdir(os.path.join(Dossier_images, classe))):
+            # print(sub_class)
             path_save = "LBP/" + classe + "/" + sub_class
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
 
             for path in os.listdir(os.path.join(Dossier_images, classe, sub_class)):
-                print(path)
+                # print(path)
                 full_path = os.path.join(Dossier_images, classe, sub_class, path)
                 img = cv2.imread(full_path)
                 if img is None:
@@ -461,7 +470,8 @@ def generateLBP(Dossier_images, progressBar):
 
                 num_image, _ = path.split(".") 
                 np.save(os.path.join(path_save, str(num_image) + ".txt"), histograms) 
-                progressBar.setValue(int(100 * ((i + 1) / n_fichier))) 
+                if progressBar is not None:
+                    progressBar.setValue(int(100 * ((i + 1) / n_fichier))) 
                 i += 1 
 
     print("liste des images qui n'ont pas fonctionnées")
@@ -505,7 +515,8 @@ def generateHOG(Dossier_images, progressBar):
 
                 num_image, _ = path.split(".") 
                 np.save(os.path.join(path_save, str(num_image) + ".txt"), feature) 
-                progressBar.setValue(int(100 * ((i + 1) / n_fichier))) 
+                if progressBar is not None:
+                    progressBar.setValue(int(100 * ((i + 1) / n_fichier))) 
                 i += 1 
 
     print("liste des images qui n'ont pas fonctionnées")
