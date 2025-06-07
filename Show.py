@@ -19,10 +19,10 @@ from skimage.io import imread
 from skimage.feature import hog 
 from skimage import exposure 
 from matplotlib import pyplot as plt 
-from functions import compter_fichiers, extractReqFeatures, showDialog, generateSIFT, generateHistogramme_HSV, generateHistogramme_Color, generateORB 
+from functions import compter_fichiers, extractReqFeatures, showDialog, generateSIFT, generateHistogramme_HSV, generateHistogramme_Color, generateORB,fusion_features_dict
 from distances import * 
 import glob
-
+import sys
 import os
 
 folder_model="" 
@@ -107,15 +107,15 @@ class Ui_MainWindow(object):
         font.setWeight(75)
         self.checkBox_HOG.setFont(font)
         self.checkBox_HOG.setObjectName("checkBox_HOG")
-        self.checkBox_Moments = QtWidgets.QCheckBox(self.centralwidget)
-        self.checkBox_Moments.setGeometry(QtCore.QRect(290, 80, 81, 16))
+        self.checkBox_Vit = QtWidgets.QCheckBox(self.centralwidget)
+        self.checkBox_Vit.setGeometry(QtCore.QRect(290, 80, 81, 16))
         font = QtGui.QFont()
         font.setFamily("Calibri")
         font.setPointSize(11)
         font.setBold(True)
         font.setWeight(75)
-        self.checkBox_Moments.setFont(font)
-        self.checkBox_Moments.setObjectName("checkBox_Moments")
+        self.checkBox_Vit.setFont(font)
+        self.checkBox_Vit.setObjectName("checkBox_Vit")
         self.label_2 = QtWidgets.QLabel(self.centralwidget)
         self.label_2.setGeometry(QtCore.QRect(10, 150, 361, 31))
         font = QtGui.QFont()
@@ -357,7 +357,7 @@ class Ui_MainWindow(object):
         self.checkBox_GLCM.setText(_translate("MainWindow", "GLCM"))
         self.checkBox_LBP.setText(_translate("MainWindow", "LBP"))
         self.checkBox_HOG.setText(_translate("MainWindow", "HOG"))
-        self.checkBox_Moments.setText(_translate("MainWindow", "Mom."))
+        self.checkBox_Vit.setText(_translate("MainWindow", "Vit"))
         self.label_2.setText(_translate("MainWindow", "Image requête"))
         self.label_4.setText(_translate("MainWindow", "Recherche"))
         self.label_5.setText(_translate("MainWindow", "Rappel/Précision"))
@@ -384,9 +384,9 @@ class Ui_MainWindow(object):
 
 
     def Ouvrir(self, MainWindow): 
-        global fileName 
-        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select Image", "", "Image Files (*.png *.jpeg *.jpg *.bmp)") 
-        pixmap = QtGui.QPixmap(fileName) 
+
+        self.fileName, _ = QtWidgets.QFileDialog.getOpenFileName(None, "Select Image", "", "Image Files (*.png *.jpeg *.jpg *.bmp)") 
+        pixmap = QtGui.QPixmap(self.fileName) 
         pixmap = pixmap.scaled(self.label_requete.width(), 
         self.label_requete.height(), QtCore.Qt.KeepAspectRatio) 
         self.label_requete.setPixmap(pixmap) 
@@ -398,94 +398,143 @@ class Ui_MainWindow(object):
     def loadFeatures(self, MainWindow): 
         
         folder_model="" 
-        if self.checkBox_HistC.isChecked(): 
-            folder_model = './BGR' 
-            self.algo_choice=1 
-        if self.checkBox_HSV.isChecked(): 
-            folder_model = './HSV' 
-            self.algo_choice=2 
-        if self.checkBox_SIFT.isChecked(): 
-            folder_model = './SIFT'
-            self.algo_choice=3 
-        if self.checkBox_ORB.isChecked(): 
-            folder_model = './ORB'
-            self.algo_choice=4 
+        self.algo_choice = []
+
+        self.algo_choice = []
+        folders_model = []
+
+        if self.checkBox_HistC.isChecked():
+            self.algo_choice.append("BGR")
+            folders_model.append('./BGR')
+        if self.checkBox_HSV.isChecked():
+            self.algo_choice.append("HSV")
+            folders_model.append('./HSV')
+        if self.checkBox_SIFT.isChecked():
+            self.algo_choice.append("SIFT")
+            folders_model.append('./SIFT')
+        if self.checkBox_ORB.isChecked():
+            self.algo_choice.append("ORB")
+            folders_model.append('./ORB')
+        if self.checkBox_Vit.isChecked():
+            self.algo_choice.append("Vit")
+            folders_model.append('./Vit_descriptor')
+        # Vérification de compatibilité des descripteurs
+        hist_descriptors = {"BGR", "HSV"}
+        keypoint_descriptors = {"SIFT", "ORB"}
+
+        if any(a in self.algo_choice for a in hist_descriptors) and any(a in self.algo_choice for a in keypoint_descriptors):
+            print("Erreur : descripteurs incompatibles sélectionnés.")
+            showDialog()
+            return
+        if len(self.algo_choice) > 1 and ("SIFT" in self.algo_choice or "ORB" in self.algo_choice):
+            print("Erreur : SIFT et ORB ne peuvent pas être combinés avec d'autres descripteurs.")
+            showDialog()
+            return 
+
         for i in reversed(range(self.gridLayout.count())):
             self.gridLayout.itemAt(i).widget().setParent(None)
-        if filenames: 
-            if self.algo_choice==3 or self.algo_choice==4: 
-                self.comboBox.clear() 
-                self.comboBox.addItems(["Brute force","Flann"]) 
-            else : 
-                self.comboBox.clear() 
-                self.comboBox.addItems(["Euclidienne","Correlation","Chi carre","Intersection","Bhattacharyya"]) 
-        if len(filenames)<1: 
-            print("Merci de charger une image avec le bouton Ouvrir") 
+        if self.fileName: 
+            if "SIFT" in self.algo_choice or "ORB" in self.algo_choice:
+                self.comboBox.clear()
+                self.comboBox.addItems(["Brute force", "Flann"])
+            else:
+                self.comboBox.clear()
+                self.comboBox.addItems(["Euclidienne", "Correlation", "Chi carre", "Intersection", "Bhattacharyya"])
+
+        if len(self.algo_choice)<1: 
+            print("Merci de selectionner un descripteur") 
             ##Charger les features de la base de données. 
-        n_fichiers = compter_fichiers(folder_model)
-        self.features1 = [] 
-        pas = 0 
-        print("chargement de descripteurs en cours ...") 
-        print(os.getcwd())
+        
+        n_fichiers = compter_fichiers(folders_model[0])
+        print("Nombre de fichiers : ", n_fichiers)
+        
+        features_temp = {}  # dictionnaire chemin_image -> [vecteurs de tous les descripteurs]
+        
+        print("Chargement descripteurs...")
 
-        for classe in os.listdir(folder_model):
-            path_classe = os.path.join(folder_model, classe)
-            if not os.path.isdir(path_classe):
-                continue
-
-            for sub_class in os.listdir(path_classe):
-                path_subclass = os.path.join(path_classe, sub_class)
-                if not os.path.isdir(path_subclass):
+        # On boucle sur chaque dossier de descripteurs
+        for model_path in folders_model:
+            pas = 0
+            print("Chargement descripteurs dans le dossier : ", model_path)
+            for classe in os.listdir(model_path):
+                path_classe = os.path.join(model_path, classe)
+                if not os.path.isdir(path_classe):
                     continue
 
-                for fichier in os.listdir(path_subclass):
-                    if not fichier.endswith(".npy"):
+                for sub_class in os.listdir(path_classe):
+                    path_subclass = os.path.join(path_classe, sub_class)
+                    if not os.path.isdir(path_subclass):
                         continue
 
-                    chemin_fichier_feature = os.path.join(path_subclass, fichier)
-                    feature = np.load(chemin_fichier_feature)
+                    for fichier in os.listdir(path_subclass):
+                        if not fichier.endswith(".npy"):
+                            continue
 
-                    # Récupère le nom de l’image originale (remplace .npy par .jpg)
-                    nom_image = fichier.split('.')[0] + ".jpg"
-                    chemin_image = os.path.join(filenames, classe, sub_class, nom_image)
+                        chemin_fichier_feature = os.path.join(path_subclass, fichier)
+                        feature = np.load(chemin_fichier_feature)
+                        if feature.ndim == 1 and "Vit" not in self.algo_choice:
 
-                    self.features1.append((chemin_image, feature))
+                            feature = feature.reshape(-1, 1)
 
-                    pas += 1
-                    self.progressBar.setValue(int(100 * ((pas + 1) /n_fichiers)))
-                    print("chemin_image", chemin_image)
-                    #print("feature", feature)
+
+                        nom_image = fichier.split('.')[0] + ".jpg"
+                        chemin_image = os.path.join(filenames, classe, sub_class, nom_image)
+
+                        if chemin_image not in features_temp:
+                            features_temp[chemin_image] = []
+                        features_temp[chemin_image].append(feature)
+
+                        pas += 1
+                        self.progressBar.setValue(int(100 * (pas / n_fichiers)))
+            self.progressBar.setValue(0)
+        for chemin_image, vecteurs in features_temp.items():
+            if chemin_image == self.fileName:
+                for i, v in enumerate(vecteurs):
+                    print(f"  vecteur {i} shape: {v.shape}, type: {type(v)}")
+                break
+
+        print("Fin chargement descripteurs")
+        if len(self.algo_choice) == 1:
+            self.features1 = [(chemin, vecteurs[0]) for chemin, vecteurs in features_temp.items()]
+        else:
+            print("Fusion des descripteurs...")
+            self.features1 = fusion_features_dict(features_temp, mode='concat')  # ou 'moyenne'
+            print("Fin fusion des descripteurs")
+            print("Nombre de descripteurs chargés :", len(self.features1))
+            print("Exemple de descripteur :", self.features1[0][1].shape if len(self.features1) > 0 else "Aucun descripteur chargé")
+       
                     
 
-        if not self.checkBox_SIFT.isChecked() and not self.checkBox_HistC.isChecked() and not self.checkBox_HSV.isChecked() and not self.checkBox_ORB.isChecked() : 
+        if not self.checkBox_SIFT.isChecked() and not self.checkBox_HistC.isChecked() and not self.checkBox_HSV.isChecked() and not self.checkBox_ORB.isChecked() and not self.checkBox_GLCM.isChecked() and not self.checkBox_LBP.isChecked() and not self.checkBox_HOG.isChecked() and not self.checkBox_Vit.isChecked() and not self.checkBox_autre.isChecked(): 
             print("Merci de sélectionner au moins un descripteur dans le menu") 
             showDialog()
+
+
     def Recherche(self, MainWindow): 
         
-        #Remise à 0 de la grille des voisins 
+        
+       # Remise à 0 de la grille des voisins 
         for i in reversed(range(self.gridLayout.count())): 
             self.gridLayout.itemAt(i).widget().setParent(None) 
-            voisins="" 
-        if self.algo_choice !=0: 
-            ##Generer les features de l'images requete 
-            req = extractReqFeatures(fileName, self.algo_choice) 
-            ##Definition du nombre de voisins 
-            nb_images = self.spinBox_nb_images.value()
+        voisins = "" 
 
+        if self.algo_choice != 0: 
+            # Préparation des features de la requête avec même logique que pour la base
+            req = extractReqFeatures(self.fileName, self.algo_choice) 
+            print("fileName:", self.fileName)
+            nb_images = self.spinBox_nb_images.value()
             self.sortie =  nb_images
-            #Aller chercher dans la liste de l'interface la distance choisie 
-            distanceName=self.comboBox.currentText() 
-            #Générer les voisins 
-            voisins=getkVoisins(self.features1, req, self.sortie, distanceName ) 
+
+            distanceName = self.comboBox.currentText()
+            voisins = getkVoisins(self.features1, req, self.sortie, distanceName)
             #print(voisins[0][0])
-            print(os.path.basename(voisins[0][0]))
             self.path_image_plus_proches = [] 
             self.nom_image_plus_proches = [] 
             for k in range(self.sortie): 
                 self.path_image_plus_proches.append(voisins[k][0]) 
                 self.nom_image_plus_proches.append(os.path.basename(voisins[k][0])) 
-                print(f"nom = {os.path.basename(voisins[k][0])}")
-                print(f"path = {voisins[k][0]}")
+                # print(f"nom = {os.path.basename(voisins[k][0])}")
+                # print(f"path = {voisins[k][0]}")
             #Nombre de colonnes pour l'affichage 
             col=3 
             k=0 
@@ -508,8 +557,8 @@ class Ui_MainWindow(object):
                     pixmap=QtGui.QPixmap.fromImage(qImg) 
                     label = QtWidgets.QLabel("") 
                     label.setAlignment(QtCore.Qt.AlignCenter) 
-                    label.setPixmap(pixmap.scaled(int(0.3*width), int(0.3*height), 
-                    QtCore.Qt.KeepAspectRatio,QtCore.Qt.SmoothTransformation)) 
+                    uniform_size = QtCore.QSize(100, 100)
+                    label.setPixmap(pixmap.scaled(uniform_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
                     self.gridLayout.addWidget(label, i, j) 
                     k+=1 
         else : 
@@ -526,9 +575,9 @@ class Ui_MainWindow(object):
 
 
         if race :
-            classe_1 =os.path.basename(fileName).split("_")[3]
+            classe_1 =os.path.basename(self.fileName).split("_")[3]
         else :
-            classe_1 =os.path.basename(fileName).split("_")[2]
+            classe_1 =os.path.basename(self.fileName).split("_")[2]
         for j in range(self.sortie):
             if race:
                 classe_2 = os.path.basename(self.path_image_plus_proches[j]).split("_")[3]
@@ -553,31 +602,33 @@ class Ui_MainWindow(object):
                 if valeur == classe_1:
                     total_pertinents += 1
         total_pertinents = min(total_pertinents, self.sortie)
-
+        AP = 0
         for i in range(self.sortie):
             if rp[i] == "pertinent":
                 val += 1
             precision = val / (i + 1)
             rappel = val / total_pertinents if total_pertinents != 0 else 0
+            AP += precision
             precisions.append(precision)
             rappels.append(rappel)
+        AP /= total_pertinents if total_pertinents != 0 else 1
 
         #Création de la courbe R/P 
         plt.plot(rappels,precisions,linewidth=2) 
         plt.xlabel("Recall",fontsize=12) 
         plt.ylabel("Precision",fontsize=12) 
-        plt.title("R/P"+str(self.sortie)+" voisins de l'image " +   os.path.basename(fileName),fontsize=14) 
+        plt.title("R/P"+str(self.sortie)+" voisins de l'image " +   os.path.basename(self.fileName),fontsize=14) 
         #Enregistrement de la courbe RP 
         if race:
-            folder_name = os.path.basename(fileName).split("_")[3]
+            folder_name = os.path.basename(self.fileName).split("_")[3]
         else:
-            folder_name = os.path.basename(fileName).split("_")[2]
+            folder_name = os.path.basename(self.fileName).split("_")[2]
         folder_name = "Recall_Precision" + "/" + folder_name 
         save_folder = os.path.join(".", folder_name)
         
         if not os.path.exists(save_folder): 
             os.makedirs(save_folder) 
-        save_name=os.path.join(save_folder,os.path.basename(fileName)+'.png') 
+        save_name=os.path.join(save_folder,os.path.basename(self.fileName)+'.png') 
         plt.savefig(save_name,format='png',dpi=800) 
         plt.close() 
         #Affichage de la courbe RP
@@ -594,13 +645,14 @@ class Ui_MainWindow(object):
                 QtCore.Qt.SmoothTransformation
             )
         )
-
+        print(f"Precision (P) pour {self.sortie} voisins de l'image {os.path.basename(self.fileName)} : {precisions[-1]}")
+        print(f"Rappel (R) pour {self.sortie} voisins de l'image {os.path.basename(self.fileName)} : {rappels[-1]}")
+        print(f"Average Precision (AP) pour {self.sortie} voisins de l'image {os.path.basename(self.fileName)} : {AP}")
 
         # self.label_courbe.setAlignment(QtCore.Qt.AlignCenter) 
         # self.label_courbe.setPixmap(pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio,QtCore.Qt.SmoothTransformation))
 
 if __name__ == "__main__":
-    import sys
     global filenames
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 

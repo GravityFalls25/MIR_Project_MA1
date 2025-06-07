@@ -303,16 +303,30 @@ def extractReqFeatures(fileName, algo_choice, mode='concat'):
             feature_extractor.reset_classifier(0)  # Remove classification head to get pure features
             feature_extractor.eval()
             feature_extractor.to(device)
+
+            transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+        ])
             # Prétraitement de l'image
-            img_tensor = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img_tensor = cv2.resize(img_tensor, (224, 224))
-            img_tensor = img_tensor.transpose((2, 0, 1))  # Convert to CxHxW
-            img_tensor = torch.tensor(img_tensor, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
-            img_tensor = img_tensor.to(device) / 255.0  # Normalisation
-            # Extraction des caractéristiques
+            image = Image.open(fileName).convert("RGB")
+            image = transform(image).unsqueeze(0).to(device)
             with torch.no_grad():
-                features = feature_extractor(img_tensor)
-            features = features.cpu().numpy().flatten()
+                features = feature_extractor(image)
+            features = features.cpu().numpy().squeeze().flatten()
+            features  = features / np.linalg.norm(features)  # Normalisation
+
+            # img_tensor = cv2.resize(img_tensor, (224, 224))
+            
+            # img_tensor = img_tensor.transpose((2, 0, 1))  # Convert to CxHxW
+            # img_tensor = torch.tensor(img_tensor, dtype=torch.float32).unsqueeze(0)  # Add batch dimension
+            # img_tensor = img_tensor.to(device) / 255.0  # Normalisation
+
+            
+            # Extraction des caractéristiques
+
+
             features_dict[fileName].append(features)
 
         else:
