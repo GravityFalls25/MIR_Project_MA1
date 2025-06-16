@@ -106,21 +106,21 @@ def check_and_download_dataset_part3():
         with zipfile.ZipFile(fichier_zip, 'r') as zip_ref:
             zip_ref.extractall(dossier_extraction)
         print(f"Extraction terminée dans le dossier : {dossier_extraction}")
-        
-        # Déplacer toutes les images de flickr30k-images/flickr30k-images/images vers flickr30k-images/images
-        src_images_dir = os.path.join(dossier_extraction, "flickr30k-images", "images")
-        dst_images_dir = os.path.join(dossier_extraction, "images")
-        os.makedirs(dst_images_dir, exist_ok=True)
 
-        if os.path.exists(src_images_dir):
-            for filename in os.listdir(src_images_dir):
-                src_file = os.path.join(src_images_dir, filename)
-                dst_file = os.path.join(dst_images_dir, filename)
+        # Déplacer toutes les images de flickr30k-images/flickr30k-images/* vers flickr30k-images/*
+        src_dir = os.path.join(dossier_extraction, "flickr30k-images")
+        dst_dir = dossier_extraction
+
+        if os.path.exists(src_dir):
+            for filename in os.listdir(src_dir):
+                src_file = os.path.join(src_dir, filename)
+                dst_file = os.path.join(dst_dir, filename)
                 shutil.move(src_file, dst_file)
-            shutil.rmtree(os.path.join(dossier_extraction, "flickr30k-images"))
-            print("Images déplacées avec succès.")
+            shutil.rmtree(src_dir)
+            print("Fichiers déplacés avec succès.")
         else:
-            print("Le dossier source des images n'existe pas.")
+            print("Le dossier source n'existe pas.")
+
 
         # 4. (Optionnel) Supprimer le fichier zip
         os.remove(fichier_zip)
@@ -193,7 +193,7 @@ def extract_features_flickr30k():
         with torch.no_grad():
             image_embedding = model.encode_image(image)
         image_embedding = image_embedding.cpu().numpy()
-        print(f"image embedding shape: {image_embedding.shape}")
+        # print(f"image embedding shape: {image_embedding.shape}")
         # embed le text
         caption_embeddings = []
         for caption in caption_list:
@@ -201,7 +201,7 @@ def extract_features_flickr30k():
             with torch.no_grad():
                 text_embedding = model.encode_text(text_token)
             text_embedding = text_embedding.cpu().numpy()
-            print(f"text embedding shape: {text_embedding.shape}")
+            #print(f"text embedding shape: {text_embedding.shape}")
             caption_embeddings.append(text_embedding)
 
         # Average caption embeddings
