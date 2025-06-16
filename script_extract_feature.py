@@ -106,6 +106,21 @@ def check_and_download_dataset_part3():
         with zipfile.ZipFile(fichier_zip, 'r') as zip_ref:
             zip_ref.extractall(dossier_extraction)
         print(f"Extraction terminée dans le dossier : {dossier_extraction}")
+        
+        # Déplacer toutes les images de flickr30k-images/flickr30k-images/images vers flickr30k-images/images
+        src_images_dir = os.path.join(dossier_extraction, "flickr30k-images", "images")
+        dst_images_dir = os.path.join(dossier_extraction, "images")
+        os.makedirs(dst_images_dir, exist_ok=True)
+
+        if os.path.exists(src_images_dir):
+            for filename in os.listdir(src_images_dir):
+                src_file = os.path.join(src_images_dir, filename)
+                dst_file = os.path.join(dst_images_dir, filename)
+                shutil.move(src_file, dst_file)
+            shutil.rmtree(os.path.join(dossier_extraction, "flickr30k-images"))
+            print("Images déplacées avec succès.")
+        else:
+            print("Le dossier source des images n'existe pas.")
 
         # 4. (Optionnel) Supprimer le fichier zip
         os.remove(fichier_zip)
