@@ -138,6 +138,16 @@ def generateSIFT(Dossier_images, progressBar):
                     list_dont.append(Dossier_images + "/" + classe + "/" + sub_class + "/" + path)
                     continue
 
+                resolution = 100
+
+                if len(kps) > resolution:
+                    idx = np.argsort([-kp.response for kp in kps])[:resolution]
+                    des = des[idx]
+                else:
+                    des = np.vstack([des, np.zeros((resolution - len(kps), des.shape[1]))])
+
+                
+
                 num_image, _ = path.split(".")
                 np.save(path_save + "/" + str(num_image) + ".txt", des)
                 if progressBar is not None:
@@ -213,7 +223,7 @@ def generateViT(Dossier_images,progressBar, device=None):
     i = 0
 
     for classe in os.listdir(Dossier_images):
-        path_save_classe = os.path.join("ViT", classe)
+        path_save_classe = os.path.join("Vit_descriptor", classe)
         if not os.path.isdir(path_save_classe):
             os.mkdir(path_save_classe)
 
@@ -285,12 +295,20 @@ def extractReqFeatures(fileName, algo_choice, mode='concat'):
 
         elif algo == "SIFT":
             sift = cv2.SIFT_create()
-            _, descriptors = sift.detectAndCompute(img, None)
-            if descriptors is None:
-                descriptors = np.zeros((1, 128))
-            vect_features = descriptors
+            kps, des = sift.detectAndCompute(img, None)
+            if des is None:
+                des = np.zeros((1, 128))
+            resolution = 100  # Nombre de points clés à conserver
+            if len(kps) > resolution:
+                idx = np.argsort([-kp.response for kp in kps])[:resolution]
+                des = des[idx]
+            else:
+                des = np.vstack([des, np.zeros((resolution - len(kps), des.shape[1]))])
+
+            vect_features = des
             features_dict[fileName].append(vect_features)
             print("Taille du vecteur SIFT :", vect_features.shape)
+            print(vect_features)
 
 
 
@@ -322,6 +340,53 @@ def extractReqFeatures(fileName, algo_choice, mode='concat'):
                 features = feature_extractor(img_tensor)
             features = features.cpu().numpy().flatten()
             features_dict[fileName].append(features)
+        
+        elif algo == "HOG":
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img = cv2.resize(img, (128, 128))  # Taille raisonnable pour HOG
+
+            features, _ = hog(img, orientations=9, pixels_per_cell=(8, 8),
+                                 cells_per_block=(2, 2), block_norm='L2-Hys',
+                                 visualize=True)
+            print(features)
+            features_dict[fileName].append(features)
+        
+        elif algo == "GLCM":
+            distances = [1, -1] 
+            angles = [0, np.pi/4, np.pi/2, 3*np.pi/4] 
+
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+            gray = img_as_ubyte(gray) 
+
+            glcmMatrix = greycomatrix(gray, distances=distances, angles=angles, normed=True) 
+            glcmProperties = []
+            for prop in ['contrast', 'dissimilarity', 'homogeneity', 'energy', 'correlation', 'ASM']:
+                glcmProperties.append(greycoprops(glcmMatrix, prop).ravel())
+            
+            feature = np.concatenate(glcmProperties, axis=None)
+            print(feature)
+            features_dict[fileName].append(feature)
+        
+        elif algo == "LBP":
+            points = 8 
+            radius = 1 
+            method = 'default' 
+            subSize = (70, 70) 
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+            img = cv2.resize(img, (350, 350)) 
+            fullLBPmatrix = local_binary_pattern(img, points, radius, method) 
+
+            histograms = [] 
+            for k in range(int(fullLBPmatrix.shape[0] / subSize[0])): 
+                for j in range(int(fullLBPmatrix.shape[1] / subSize[1])): 
+                    subVector = fullLBPmatrix[
+                        k * subSize[0]:(k + 1) * subSize[0],
+                        j * subSize[1]:(j + 1) * subSize[1]
+                    ].ravel() 
+                    subHist, _ = np.histogram(subVector, bins=int(2**points), range=(0, 2**points)) 
+                    histograms = np.concatenate((histograms, subHist), axis=None) 
+            print(histograms)
+            features_dict[fileName].append(histograms)
 
         else:
             print(f"Descripteur inconnu : {algo}")
@@ -387,7 +452,7 @@ def generateGLCM(Dossier_images, progressBar):
             os.mkdir(path_save)
 
         for sub_class in tqdm(os.listdir(os.path.join(Dossier_images, classe))):
-            # print(sub_class)
+                # print(sub_class)
             path_save = "GLCM/" + classe + "/" + sub_class
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
@@ -492,14 +557,14 @@ def generateHOG(Dossier_images, progressBar):
         if not os.path.isdir(path_save):
             os.mkdir(path_save)
         
-        for sub_class in os.listdir(os.path.join(Dossier_images, classe)):
-            print(sub_class)
+        for sub_class in tqdm(os.listdir(os.path.join(Dossier_images, classe))):
+            # print(sub_class)
             path_save = "HOG/" + classe + "/" + sub_class
             if not os.path.isdir(path_save):
                 os.mkdir(path_save)
 
             for path in os.listdir(os.path.join(Dossier_images, classe, sub_class)):
-                print(path)
+                # print(path)
                 full_path = os.path.join(Dossier_images, classe, sub_class, path)
                 img = cv2.imread(full_path)
                 if img is None:

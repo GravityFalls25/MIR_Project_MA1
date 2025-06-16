@@ -24,6 +24,7 @@ from distances import *
 import glob
 import sys
 import os
+import time
 
 folder_model="" 
 
@@ -418,6 +419,16 @@ class Ui_MainWindow(object):
         if self.checkBox_Vit.isChecked():
             self.algo_choice.append("Vit")
             folders_model.append('./Vit_descriptor')
+        if self.checkBox_GLCM.isChecked():
+            self.algo_choice.append("GLCM")
+            folders_model.append('./GLCM')
+        if self.checkBox_LBP.isChecked():
+            self.algo_choice.append("LBP")
+            folders_model.append('./LBP')
+        if self.checkBox_HOG.isChecked():
+            self.algo_choice.append("HOG")
+            folders_model.append('./HOG')
+        #ajouter if
         # Vérification de compatibilité des descripteurs
         hist_descriptors = {"BGR", "HSV"}
         keypoint_descriptors = {"SIFT", "ORB"}
@@ -451,6 +462,7 @@ class Ui_MainWindow(object):
         features_temp = {}  # dictionnaire chemin_image -> [vecteurs de tous les descripteurs]
         
         print("Chargement descripteurs...")
+        debut = time.time()
 
         # On boucle sur chaque dossier de descripteurs
         for model_path in folders_model:
@@ -493,9 +505,10 @@ class Ui_MainWindow(object):
                     print(f"  vecteur {i} shape: {v.shape}, type: {type(v)}")
                 break
 
-        print("Fin chargement descripteurs")
+        print(f"Fin chargement descripteurs a pris {time.time() - debut:.2f} secondes")
         if len(self.algo_choice) == 1:
             self.features1 = [(chemin, vecteurs[0]) for chemin, vecteurs in features_temp.items()]
+
         else:
             print("Fusion des descripteurs...")
             self.features1 = fusion_features_dict(features_temp, mode='concat')  # ou 'moyenne'
@@ -519,15 +532,21 @@ class Ui_MainWindow(object):
         voisins = "" 
 
         if self.algo_choice != 0: 
+            temps  = time.time()
+
             # Préparation des features de la requête avec même logique que pour la base
             req = extractReqFeatures(self.fileName, self.algo_choice) 
             print("fileName:", self.fileName)
             nb_images = self.spinBox_nb_images.value()
+            if nb_images == 999: #permet de faire top max comme demande le prof
+              directory = os.path.dirname(self.fileName)
+              nb_images = len(glob.glob(os.path.join(directory, "*.jpg"))) 
             self.sortie =  nb_images
 
             distanceName = self.comboBox.currentText()
             voisins = getkVoisins(self.features1, req, self.sortie, distanceName)
             #print(voisins[0][0])
+            print("recherche a pris ", time.time() - temps, " secondes sans compter l'affichage des images")
             self.path_image_plus_proches = [] 
             self.nom_image_plus_proches = [] 
             for k in range(self.sortie): 
@@ -540,7 +559,7 @@ class Ui_MainWindow(object):
             k=0 
             for i in range(math.ceil(self.sortie/col)): 
                 for j in range(col): 
-                    print(f"path_image_plus_proches[{k}]",self.path_image_plus_proches[k])
+                    # print(f"path_image_plus_proches[{k}]",self.path_image_plus_proches[k])
                     img = cv2.imread(self.path_image_plus_proches[k],1) #load image 
                     #Remise de l'image en RGB pour l'afficher correctement 
                     if img is None:
@@ -561,8 +580,12 @@ class Ui_MainWindow(object):
                     label.setPixmap(pixmap.scaled(uniform_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
                     self.gridLayout.addWidget(label, i, j) 
                     k+=1 
+                    if k >= self.sortie: #si trop image break
+                        break
+            self.rappel_precision() #calcul de la courbe R/P
         else : 
             print("Il faut choisir une méthode !")
+        
 
 
     def rappel_precision(self): 
@@ -601,7 +624,7 @@ class Ui_MainWindow(object):
                 valeur = parts[index]
                 if valeur == classe_1:
                     total_pertinents += 1
-        total_pertinents = min(total_pertinents, self.sortie)
+        total_pertinents = total_pertinents #min(total_pertinents, self.sortie) #prend à chaque fois par rapport au à tous
         AP = 0
         for i in range(self.sortie):
             if rp[i] == "pertinent":

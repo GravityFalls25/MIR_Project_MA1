@@ -7,6 +7,7 @@ from skimage import feature
 from matplotlib import pyplot as plt
 from skimage.feature import hog,local_binary_pattern
 # from skimage.feature.texture import graycomatrix, graycoprops
+from tqdm import tqdm
 
 import operator
 import collections 
@@ -33,23 +34,56 @@ def bhatta(l1, l2):
 
 
 def flann(a,b):
-    a = np.float32(np.array(a))
-    b = np.float32(np.array(b))
-    if a.shape[0]==0 or b.shape[0]==0:
-        return np.inf
+    # if a is None or b is None or len(a) == 0 or len(b) == 0:
+    #     return np.inf
+
+    # a = np.array(a, dtype=np.float32)
+    # b = np.array(b, dtype=np.float32)
+
+    # FLANN_INDEX_KDTREE = 1
+    # index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+    # search_params = dict(checks=50)
+
+    # flann = cv2.FlannBasedMatcher(index_params, search_params)
+    # matches = flann.match(a, b)
+
+    # distances = [m.distance for m in matches]
+
+    # return np.mean(distances)
     if a is None or b is None or len(a) == 0 or len(b) == 0:
-        print("Descripteurs vides (None ou len == 0)")
         return np.inf
 
-    if len(b.shape) != 2 or len(a.shape) != 2:
-        print(f"Mauvais format de descripteurs : a.shape={a.shape}, b.shape={b.shape}")
-        return np.inf
-    index_params = dict(algorithm=1, trees=5)
-    sch_params = dict(checks=50)
-    flannMatcher = cv2.FlannBasedMatcher(index_params, sch_params)
-    matches = list(map(lambda x: x.distance, flannMatcher.match(a, b)))
-    return np.mean(matches)
 
+
+    a = np.asarray(a)
+    b = np.asarray(b)
+
+    if a.dtype == np.uint8:
+
+        
+        # ORB / binary descriptors
+        index_params = dict(algorithm=6,  # FLANN_INDEX_LSH
+                            table_number=12,
+                            key_size=20,
+                            multi_probe_level=2)
+        search_params = dict(checks=50)
+        flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+    elif a.dtype == np.float32:
+        # SIFT / float descriptors
+        FLANN_INDEX_KDTREE = 1
+        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+        search_params = dict(checks=50)
+        flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+    else:
+        raise ValueError("Unsupported descriptor type: must be uint8 (ORB) or float32 (SIFT)")
+
+    matches = flann.match(a, b)
+    distances = [m.distance for m in matches]
+
+    return np.mean(distances)
+    
 def bruteForceMatching(a, b):
     a = np.array(a).astype('uint8')
     b = np.array(b).astype('uint8')
@@ -58,9 +92,10 @@ def bruteForceMatching(a, b):
         print("Descripteurs vides (None ou len == 0)")
         return np.inf
 
-    if len(b.shape) != 2 or len(a.shape) != 2:
+    if b.shape != a.shape:
         print(f"Mauvais format de descripteurs : a.shape={a.shape}, b.shape={b.shape}")
         return np.inf
+    print(a.shape, b.shape)
     matches = list(map(lambda x: x.distance, bf.match(a, b)))
     return np.mean(matches)
 
@@ -89,14 +124,21 @@ def distance_f(l1,l2,distanceName):
     return distance
 
 def getkVoisins(lfeatures, req, k,distanceName) : 
-    ldistances = [] 
-    for i in range(len(lfeatures)): 
-        dist = distance_f(req, lfeatures[i][1],distanceName)
+    ldistances = []
+    tmp= 0 
+    for i in tqdm(range(len(lfeatures))): 
+        # print(req.shape, lfeatures[i][1].flatten().shape)
+        dist = distance_f(req.flatten(), lfeatures[i][1].flatten(), distanceName)
+        if dist != np.inf:
+            tmp +=1
         ldistances.append((lfeatures[i][0], lfeatures[i][1], dist)) 
     if distanceName in ["Correlation","Intersection"]:
         ordre=True
     else:
         ordre=False
+
+    print(f"Nombre de descripteurs valides : {tmp} ")
+    
     ldistances.sort(key=operator.itemgetter(2),reverse=ordre) 
 
     lvoisins = [] 

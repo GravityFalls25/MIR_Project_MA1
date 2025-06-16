@@ -6,6 +6,9 @@
 #
 # WARNING! All changes made in this file will be lost!
 
+from time import time
+
+from tqdm import tqdm
 from flickr30k import Dataset #pour avoir dataset partie3
 
 
@@ -138,7 +141,9 @@ class Ui_MainWindow(object):
 
         self.model_text = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2') #import le modele
 
+        a = time()
         self.features_dicts, self.image_dict, self.text_dict = self.load_features_with_images()
+        print(f"chargement des features de la parite 2 a pris {time() - a} secondes")
 
         self.selected_image = None
 
@@ -153,12 +158,14 @@ class Ui_MainWindow(object):
 
         self.model_clip, self.preprocess = clip.load("ViT-B/32", device=self.device) #charge le modèle CLIP
 
+        a = time()
         #charge des index par faiss 
         self.image_index = faiss.read_index("flickr30k_clip_images.index")
         self.text_index = faiss.read_index("flickr30k_clip_texts.index")
         self.multimodal_index = faiss.read_index("flickr30k_clip_multimodal.index")
         self.image_paths = np.load("image_paths.npy", allow_pickle=True)
         self.captions = np.load("captions.npy", allow_pickle=True)
+        print(f"chargement des index de la partie 3 a pris {time() - a} secondes")
 
 
 
@@ -235,7 +242,7 @@ class Ui_MainWindow(object):
         with open('captions_MIR_DATASETS_B.json', 'r') as f:
             text_complet = json.load(f)
 
-        for file in feature_files:
+        for file in tqdm(feature_files):
             feature_vector = np.load(file)
             base_name = os.path.splitext(os.path.basename(file))[0]
 
@@ -257,8 +264,8 @@ class Ui_MainWindow(object):
                 image_dict[base_name] = image_path
             else:
                 print(f"Aucune image trouvée pour {file} (attendu : {image_path})")
-        
-        for file in feature_text_files:
+
+        for file in tqdm(feature_text_files):
             feature_vector = np.load(file)
             base_name = os.path.splitext(os.path.basename(file))[0]
 
@@ -375,6 +382,7 @@ class Ui_MainWindow(object):
 
     
     def recherche_partie3(self): #fonction recherche pour la partie 3
+        a = time()
         input_text = self.textInput.toPlainText()
         top_text = self.topInput.toPlainText()
         image_path = self.selected_image
@@ -420,16 +428,18 @@ class Ui_MainWindow(object):
 
         top_image_paths = [self.image_paths[i] for i in I[0]]
 
+        print(f"recherche a pris {time() - a} secondes")
+
         # nom_images_proches = [self.image_dict[v[0]] for v in voisins if v[0] in self.image_dict]
         for j in range(min(top, len(top_image_paths))):
             image_path_tmp = top_image_paths[j]
             indice = np.where(self.image_paths == image_path_tmp)[0]  # Trouve l'indice de l'image dans self.image_paths
-            print("indice", indice)
+            # print("indice", indice)
             nom = top_image_paths[j].split("/")[-1].split(".")[0]  #retire extension + path avant
             # print(self.text_dict)
             text = self.captions[indice[0]] if indice.size > 0 else "Texte non trouvé"
             text = "\n ".join([str(t) for t in text.tolist()]) #pour avoir un seul string
-            print("text", text)
+            # print("text", text)
             
             self.add_result_image_and_text(self.scrollAreaWidgetContents, image_path_tmp, nom, text)
         
@@ -477,14 +487,18 @@ class Ui_MainWindow(object):
             self.coubreRP.setPixmap(pixmap)
             self.coubreRP.setScaledContents(True)
 
-            self.map.setText(f"MAP = {average_precision:.2f}")
+            self.map.setText(f"AP = {average_precision:.2f}")
+
+            print("Rappel", recall[-1])
+            print("Precision", precision[-1])
+            print("Average Precision", average_precision)
             
         
             
 
 
     def recherche_partie2(self): #fonction recherche pour la partie 2
-
+        debut = time()
         race = True
 
         #les inputs
@@ -500,6 +514,10 @@ class Ui_MainWindow(object):
 
         top = int(top_text) #le récupère
         assert top > 0, "Veuillez entrer un nombre d'image souhaite positif"
+
+        if top == 999 and image_path is not None: #si 999 on prend toutes les images du dossier
+            directory = os.path.dirname(image_path)  # Récupère le dossier de l'image
+            top = len(glob.glob(os.path.join(directory, "*.jpg")))  # Compte le nombre d'images .jpg dans le dossier
 
         if input_text == "":
             input_text = None
@@ -535,9 +553,9 @@ class Ui_MainWindow(object):
             # print(self.text_dict)
             text = self.text_dict[nom]
             self.add_result_image_and_text(self.scrollAreaWidgetContents, image_path_tmp, nom, text)
-
+        print(f"recherche a pris {time() - debut} secondes")
         #calcule la courbe R/P
-        if selected_request == 0:
+        if selected_request != 1: #juste si pas texte
             rappel_precion = []
             rp = []
             position1 = os.path.splitext(os.path.basename(image_path))[0]
@@ -615,6 +633,11 @@ class Ui_MainWindow(object):
             # Set pixmap to your QLabel
             self.coubreRP.setPixmap(pixmap)
             self.coubreRP.setScaledContents(True)
+
+            print("rappel", vec_rap[-1])
+            print("precision", vec_prec[-1])
+            print("Average Precision", np.sum(vec_prec)/topmax)
+            
 
 
 

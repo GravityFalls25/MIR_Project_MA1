@@ -178,7 +178,7 @@ def extract_features_flickr30k():
         with torch.no_grad():
             image_embedding = model.encode_image(image)
         image_embedding = image_embedding.cpu().numpy()
-
+        print(f"image embedding shape: {image_embedding.shape}")
         # embed le text
         caption_embeddings = []
         for caption in caption_list:
@@ -186,6 +186,7 @@ def extract_features_flickr30k():
             with torch.no_grad():
                 text_embedding = model.encode_text(text_token)
             text_embedding = text_embedding.cpu().numpy()
+            print(f"text embedding shape: {text_embedding.shape}")
             caption_embeddings.append(text_embedding)
 
         # Average caption embeddings
@@ -247,6 +248,38 @@ while True:
         print("Indexation de tous les descripteurs utile à la partie 1")
         check_and_download_dataset_part12()
 
+        #VIT
+        print("start VIT")
+        a = time.time()
+        fct.generateViT(dossier_dataset_1, None, device=device)
+        print(f"Descripteur ViT généré en {time.time()-a} secondes")
+
+
+        #pour HOG
+        print("start HOG")
+        a = time.time()
+        fct.generateHOG(dossier_dataset_1, None)
+        print(f"Descripteur HOG généré en {time.time()-a} secondes")
+
+        #GLCM
+        print("start GLCM")
+        a = time.time()
+        fct.generateGLCM(dossier_dataset_1, None)
+        print(f"Descripteur GLCM généré en {time.time()-a} secondes")
+
+        print("start ORB")
+        a = time.time()
+        fct.generateORB(dossier_dataset_1, None)
+        print(f"Descripteur ORB généré en {time.time()-a} secondes")
+
+        #SIFT
+        print("start SIFT")
+        a = time.time()
+        fct.generateSIFT(dossier_dataset_1, None)
+        print(f"Descripteur SIFT généré en {time.time()-a} secondes")
+
+        
+
         #histogramme de couleur BGR
         print("start BGR")
         a = time.time()
@@ -259,23 +292,9 @@ while True:
         fct.generateHistogramme_HSV(dossier_dataset_1, None)
         print(f"Histogramme de couleur HSV généré en {time.time()-a} secondes")
 
-        #SIFT
-        print("start SIFT")
-        a = time.time()
-        fct.generateSIFT(dossier_dataset_1, None)
-        print(f"Descripteur SIFT généré en {time.time()-a} secondes")
+        
 
-        #ORB
-        print("start ORB")
-        a = time.time()
-        fct.generateORB(dossier_dataset_1, None)
-        print(f"Descripteur ORB généré en {time.time()-a} secondes")
-
-        #GLCM
-        print("start GLCM")
-        a = time.time()
-        fct.generateGLCM(dossier_dataset_1, None)
-        print(f"Descripteur GLCM généré en {time.time()-a} secondes")
+        
 
         #LBP
         print("start LBP")
@@ -283,11 +302,7 @@ while True:
         fct.generateLBP(dossier_dataset_1, None)
         print(f"Descripteur LBP généré en {time.time()-a} secondes")
 
-        #VIT
-        print("start VIT")
-        a = time.time()
-        fct.generateViT(dossier_dataset_1, None, device=device)
-        print(f"Descripteur HOG généré en {time.time()-a} secondes")
+        
 
 
     elif choix == "2":
